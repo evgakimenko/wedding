@@ -148,6 +148,22 @@ h2 .lnk{text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600
 .rcpt{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
 .rprev{position:relative}.rprev img{display:block;max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--line)}
 .rprev .x{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff}
+.mbgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mbcard{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;text-align:left;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.mbcov{height:110px;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;background:var(--soft)}
+.mbcov img,.mbcov i{width:100%;height:110px;object-fit:cover;display:block;background:var(--soft)}
+.mbcov span{display:grid;place-items:center;font-size:38px;height:110px}
+.mbinfo{padding:10px 12px 12px}.mbinfo .t{font-weight:700;font-size:14px}.mbinfo .s{font-size:12px;color:var(--muted);margin-top:2px}
+.mbphotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mbph{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--soft);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;text-align:center}
+.mbph img{width:100%;height:100%;object-fit:cover}
+.mbph small{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-size:11px;padding:14px 6px 5px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mblink span{font-size:26px}.mblink b{font-size:12px;padding:0 6px;word-break:break-all}.mblink small{position:static;background:none;color:var(--muted);white-space:normal}
+.mbadd{font-size:26px;color:var(--accent);border-style:dashed;cursor:pointer;background:var(--card)}.mbadd span{font-size:12px;font-weight:700}
+.mbfull img{display:block;width:100%;border-radius:14px}
+.tl .tm{font:700 17px Manrope,sans-serif;color:var(--accent);min-width:56px;align-self:flex-start;padding-top:1px}
+.cm .t{font-size:15px}
+@media (min-width:900px){.mbgrid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}.mbphotos{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.mbcov,.mbcov img,.mbcov i,.mbcov span{height:150px}}
 .dx{display:none!important}
 @media (hover:hover){.row:hover{background:var(--soft)}button.row,.chip,.btn,.tabbar button{transition:background .12s}}
 @media (min-width:900px){
@@ -202,8 +218,8 @@ const PMETH = {cash:"Наличные",transfer:"Перевод",card:"Карт�
 const PUR = {need:["Купить","s-search"],ordered:["Заказано","s-talks"],bought:["Куплено","s-paid"]};
 const RSVP = {list:["В списке","s-none"],invited:["Приглашён","s-talks"],yes:["Придёт","s-paid"],no:["Не придёт","s-no"]};
 const GROUPS = ["Семья","Друзья","Коллеги","Другое"];
-const COLLS = ["categories","vendors","payments","tasks","purchases","guests","tables","expenses"];
-const S = {settings:null,categories:[],vendors:[],payments:[],tasks:[],purchases:[],guests:[],tables:[],expenses:[]};
+const COLLS = ["categories","vendors","payments","tasks","purchases","guests","tables","expenses","mbphotos","mbcomments","schedule"];
+const S = {settings:null,categories:[],vendors:[],payments:[],tasks:[],purchases:[],guests:[],tables:[],expenses:[],mbphotos:[],mbcomments:[],schedule:[]};
 const CFG = window.WEDDING_CONFIG || {};
 let sb = null, session = null, W = null, me = null, canWrite = true, phase = "boot", loaded = false, offline = false, outbox = [], members = [], tfTouched = false;
 const ui = {vf:"all", tf:"all", pf:"all", gf:"all", lf:"all", q:""};
@@ -312,7 +328,7 @@ async function loadAll() {
   try {
     let rows = [], from = 0;
     for (;;) {
-      const {data, error} = await sb.from("docs").select("coll,id,data").eq("wedding_id", W).neq("coll", "receipts").range(from, from + 999);
+      const {data, error} = await sb.from("docs").select("coll,id,data").eq("wedding_id", W).not("coll", "in", "(receipts,mbthumb,mbimg)").range(from, from + 999);
       if (error) throw error;
       rows = rows.concat(data); if (data.length < 1000) break; from += 1000;
     }
@@ -327,7 +343,7 @@ function subscribe() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel("docs-" + W).on("postgres_changes", {event: "*", schema: "public", table: "docs"}, p => {
     const row = p.eventType === "DELETE" ? p.old : p.new;
-    if (!row || row.wedding_id !== W || row.coll === "receipts") return;
+    if (!row || row.wedding_id !== W || row.coll === "receipts" || row.coll === "mbthumb" || row.coll === "mbimg") return;
     if (outbox.some(o => o.coll === row.coll && o.id === row.id)) return;
     applyLocal(p.eventType === "DELETE" ? {t: "del", coll: row.coll, id: row.id} : {t: "up", coll: row.coll, id: row.id, data: row.data || {}});
     saveCache(); schedule();
@@ -457,11 +473,13 @@ const IC = {
   seat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="3.5" r="1.5"/><circle cx="12" cy="20.5" r="1.5"/><circle cx="3.5" cy="12" r="1.5"/><circle cx="20.5" cy="12" r="1.5"/></svg>',
   glass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l-1 7a4 4 0 0 1-8 0zM12 14v7M8.5 21h7"/></svg>',
   gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  mood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="10" rx="2"/><rect x="13" y="3" width="8" height="6" rx="2"/><rect x="13" y="11" width="8" height="10" rx="2"/><rect x="3" y="15" width="8" height="6" rx="2"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
   xls: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 13l4 5M13 13l-4 5"/></svg>'
 };
 const TABS = [["home","Главная"],["vendors","Подрядчики"],["budget","Бюджет"],["tasks","Задачи"],["more","Ещё"]];
-const SUB = {purchases:"more", guests:"more", seating:"more", drinks:"more", settings:"more"};
-const route = () => { const h = (location.hash || "#home").slice(1); return [...TABS.map(t => t[0]), ...Object.keys(SUB)].includes(h) ? h : "home"; };
+const SUB = {purchases:"more", guests:"more", seating:"more", drinks:"more", settings:"more", mood:"more", schedule:"more"};
+const route = () => { const h = (location.hash || "#home").slice(1); if (/^mood-[a-z]+$/.test(h)) return h; return [...TABS.map(t => t[0]), ...Object.keys(SUB)].includes(h) ? h : "home"; };
 function go(r) { if (location.hash.slice(1) === r) { render(); window.scrollTo(0, 0); } else location.hash = r; }
 window.addEventListener("hashchange", () => { closeAll(); render(); window.scrollTo(0, 0); });
 
@@ -488,13 +506,13 @@ function render() {
     if (!$(".ob", app)) renderOnboarding(app);
     return;
   }
-  const r = route(), active = SUB[r] || r;
+  const r = route(), active = r.startsWith("mood-") ? "more" : SUB[r] || r;
   const dl = daysLeft();
-  const SIDE_EXTRA = [["purchases", "Покупки", "bag"], ["guests", "Гости", "guests"], ["seating", "Рассадка", "seat"], ["drinks", "Напитки", "glass"], ["settings", "Настройки", "gear"]];
-  tb.innerHTML = `<div class="in"><div class="brand dx"><div class="bn">${esc(name1())} <span>&amp;</span> ${esc(name2())}</div><div class="bd">${st().date ? esc(fmtD(st().date, true)) : ""}${dl != null && dl > 0 ? ` · ${dl} ${plural(dl, "день", "дня", "дней")}` : ""}</div></div>${TABS.map(([k, l]) => `<button class="${k === active ? "on" : ""}${k === "more" ? " mo" : ""}" data-go="${k}">${IC[k]}<span>${l}</span></button>`).join("")}<div class="sep dx"></div>${SIDE_EXTRA.map(([k, l, ic]) => `<button class="dx ${k === r ? "on" : ""}" data-go="${k}">${IC[ic]}<span>${l}</span></button>`).join("")}<button class="dx" data-act="export">${IC.xls}<span>Excel</span></button><div class="dx sidefoot">${esc(roleName(me))}${session && session.user ? " · " + esc(session.user.email || "") : ""}</div></div>`;
+  const SIDE_EXTRA = [["mood", "Атмосфера", "mood"], ["schedule", "Расписание", "clock"], ["purchases", "Покупки", "bag"], ["guests", "Гости", "guests"], ["seating", "Рассадка", "seat"], ["drinks", "Напитки", "glass"], ["settings", "Настройки", "gear"]];
+  tb.innerHTML = `<div class="in"><div class="brand dx"><div class="bn">${esc(name1())} <span>&amp;</span> ${esc(name2())}</div><div class="bd">${st().date ? esc(fmtD(st().date, true)) : ""}${dl != null && dl > 0 ? ` · ${dl} ${plural(dl, "день", "дня", "дней")}` : ""}</div></div>${TABS.map(([k, l]) => `<button class="${k === active ? "on" : ""}${k === "more" ? " mo" : ""}" data-go="${k}">${IC[k]}<span>${l}</span></button>`).join("")}<div class="sep dx"></div>${SIDE_EXTRA.map(([k, l, ic]) => `<button class="dx ${k === r || (k === "mood" && r.startsWith("mood-")) ? "on" : ""}" data-go="${k}">${IC[ic]}<span>${l}</span></button>`).join("")}<button class="dx" data-act="export">${IC.xls}<span>Excel</span></button><div class="dx sidefoot">${esc(roleName(me))}${session && session.user ? " · " + esc(session.user.email || "") : ""}</div></div>`;
   const banner = (!canWrite ? `<div class="banner">👀 Режим просмотра — вы видите планер, но не можете его менять.</div>` : "")
     + (offline ? `<div class="banner">Нет интернета — показаны сохранённые данные.${outbox.length ? ` Изменений ждут отправки: ${outbox.length}.` : ""} Всё синхронизируется, когда связь вернётся.</div>` : "");
-  const V = {home: vHome, vendors: vVendors, budget: vBudget, tasks: vTasks, more: vMore, purchases: vPurchases, guests: vGuests, seating: vSeating, drinks: vDrinks, settings: vSettings}[r];
+  const V = r.startsWith("mood-") ? () => vBoard(r.slice(5)) : {home: vHome, vendors: vVendors, budget: vBudget, tasks: vTasks, more: vMore, purchases: vPurchases, guests: vGuests, seating: vSeating, drinks: vDrinks, settings: vSettings, mood: vMood, schedule: vSchedule}[r];
   const y = window.scrollY;
   app.innerHTML = banner + V();
   window.scrollTo(0, y);
@@ -858,6 +876,8 @@ function vMore() {
   const item = (go, ic, t, s) => `<button class="row" data-go="${go}">${IC[ic]}<div class="grow"><div class="t">${t}</div><div class="s">${s}</div></div><span class="chev">›</span></button>`;
   const G = gStats();
   return head("Ещё") + `<div class="card list menu">
+    ${item("mood", "mood", "Атмосфера", `Мудборд и пожелания подрядчикам · ${S.mbphotos.length} ${plural(S.mbphotos.length, "идея", "идеи", "идей")}`)}
+    ${item("schedule", "clock", "Расписание дня", S.schedule.length ? `${S.schedule.length} ${plural(S.schedule.length, "пункт", "пункта", "пунктов")} · начало ${esc(schedSorted()[0].time || "")}` : "Тайминг свадебного дня")}
     ${item("purchases", "bag", "Покупки", `${S.purchases.filter(p => p.status === "bought").length} из ${S.purchases.length} куплено`)}
     ${item("guests", "guests", "Гости", `${G.total} в списке · ${G.yes} придут`)}
     ${item("seating", "seat", "Рассадка", `${S.tables.length} ${plural(S.tables.length, "стол", "стола", "столов")} · ${G.seated} рассажено`)}
@@ -1142,6 +1162,8 @@ async function deleteItem(kind, id) {
   else if (kind === "expenses") { const x = S.expenses.find(e => e.id === id); if (!x || !(await ask(`Расход «${x.title || catLabel(x.catId)}» на ${rub(x.amount)} будет удалён.`))) return; await del("expenses", id); if (x.hasReceipt) delReceipt(id); toast("Расход удалён"); }
   else if (kind === "purchases") { const x = S.purchases.find(e => e.id === id); if (!x || !(await ask(`«${x.title}» будет удалено из покупок.`))) return; await del("purchases", id); }
   else if (kind === "guests") { const x = S.guests.find(e => e.id === id); if (!x || !(await ask(`${x.name} будет удалён(а) из списка гостей.`))) return; await del("guests", id); }
+  else if (kind === "schedule") { const x = S.schedule.find(e => e.id === id); if (!x || !(await ask(`«${x.title}» будет удалено из расписания.`))) return; await del("schedule", id); }
+  else if (kind === "mbcomments") { if (!(await ask("Комментарий будет удалён."))) return; await del("mbcomments", id); }
   else if (kind === "tasks") { const x = S.tasks.find(e => e.id === id); if (!x || !(await ask(`Задача «${x.title}» будет удалена.`))) return; await del("tasks", id); }
 }
 async function deleteCategory(c) {
@@ -1245,6 +1267,166 @@ function showCategory(c) {
   bg.querySelector("[data-delc]").onclick = () => deleteCategory(c);
 }
 
+/* ---------- MOOD BOARD ---------- */
+const BOARDS = [
+  {key: "decor", name: "Декор и флористика", emoji: "💐", cat: "decor"},
+  {key: "photo", name: "Фотограф", emoji: "📷", cat: "photo"},
+  {key: "video", name: "Видео", emoji: "🎬", cat: "video"},
+  {key: "cake", name: "Торт", emoji: "🎂", cat: "cake"},
+  {key: "print", name: "Полиграфия", emoji: "✉️", cat: "print"},
+  {key: "ideas", name: "Идеи и фишки", emoji: "✨", cat: null},
+  {key: "host", name: "Ведущий и DJ", emoji: "🎤", cat: "host"}
+];
+const CTYPE = {wish: ["Пожелание", "s-contract"], question: ["Вопрос", "s-talks"], note: ["Заметка", "s-none"]};
+const boardByKey = k => BOARDS.find(b => b.key === k);
+const boardVendor = b => { if (!b.cat) return null; const c = S.categories.find(x => x.key === b.cat); return c ? S.vendors.find(v => v.catId === c.id && isSel(v)) : null; };
+const thumbs = {}, fulls = {};
+async function loadThumbs(ids) {
+  const need = ids.filter(id => !(id in thumbs)); if (!need.length || !sb) return;
+  for (let i = 0; i < need.length; i += 40) {
+    const {data, error} = await sb.from("docs").select("id,data").eq("wedding_id", W).eq("coll", "mbthumb").in("id", need.slice(i, i + 40));
+    if (error) { if (!isNet(error)) console.warn(error); return; }
+    for (const r of data) thumbs[r.id] = r.data.img;
+    for (const id of need.slice(i, i + 40)) if (!(id in thumbs)) thumbs[id] = null;
+  }
+  schedule();
+}
+async function loadFull(id) {
+  if (fulls[id]) return fulls[id];
+  const {data} = await sb.from("docs").select("data").eq("wedding_id", W).eq("coll", "mbimg").eq("id", id);
+  return data && data[0] ? (fulls[id] = data[0].data.img) : null;
+}
+async function resizeTo(file, max, q0, limit) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement("canvas"); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    let q = q0, out = cv.toDataURL("image/jpeg", q);
+    while (out.length > limit && q > 0.3) { q -= 0.1; out = cv.toDataURL("image/jpeg", q); }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+async function uploadMoodPhotos(board, files) {
+  if (!navigator.onLine) return toast("Чтобы загрузить фото, нужен интернет");
+  const ov = document.createElement("div"); ov.className = "prog"; ov.innerHTML = `<div><div class="big">Загружаем фото…</div><p class="mini" id="mbp"></p></div>`; document.body.appendChild(ov);
+  let ok = 0;
+  for (let i = 0; i < files.length; i++) {
+    const el = $("#mbp"); if (el) el.textContent = `${i + 1} из ${files.length}`;
+    try {
+      const full = await resizeTo(files[i], 1600, 0.75, 450000), thumb = await resizeTo(files[i], 420, 0.65, 45000);
+      const id = uid();
+      let r = await sb.from("docs").upsert([{wedding_id: W, coll: "mbimg", id, data: {img: full}}, {wedding_id: W, coll: "mbthumb", id, data: {img: thumb}}]);
+      if (r.error) throw r.error;
+      thumbs[id] = thumb; fulls[id] = full;
+      queue({t: "up", coll: "mbphotos", id, data: {board, kind: "photo", caption: "", createdAt: Date.now() + i, by: me}});
+      ok++;
+    } catch (e) { console.warn(e); }
+  }
+  ov.remove();
+  toast(ok === files.length ? `Добавлено фото: ${ok}` : `Загружено ${ok} из ${files.length}. Остальные не удалось обработать`);
+}
+async function deleteMoodPhoto(p) {
+  await del("mbphotos", p.id);
+  if (p.kind === "photo") { delete thumbs[p.id]; delete fulls[p.id]; try { await sb.from("docs").delete().match({wedding_id: W, coll: "mbthumb", id: p.id}); await sb.from("docs").delete().match({wedding_id: W, coll: "mbimg", id: p.id}); } catch (e) {} }
+}
+const linkHost = u => { try { return new URL(/^https?:/i.test(u) ? u : "https://" + u).hostname.replace(/^www\./, ""); } catch (e) { return u; } };
+function vMood() {
+  const html = BOARDS.map(b => {
+    const ph = S.mbphotos.filter(p => p.board === b.key).sort((a, b2) => (b2.createdAt || 0) - (a.createdAt || 0));
+    const cm = S.mbcomments.filter(c => c.board === b.key), open = cm.filter(c => c.type === "question" && !c.resolved).length;
+    const covers = ph.filter(p => p.kind === "photo").slice(0, 3);
+    const v = boardVendor(b);
+    return `<button class="mbcard" data-go="mood-${b.key}"><div class="mbcov">${covers.length ? covers.map(p => thumbs[p.id] ? `<img src="${thumbs[p.id]}" alt="">` : `<i></i>`).join("") : `<span>${b.emoji}</span>`}</div><div class="mbinfo"><div class="t">${b.emoji} ${esc(b.name)}</div><div class="s">${ph.length} ${plural(ph.length, "идея", "идеи", "идей")} · ${cm.length} ${plural(cm.length, "комментарий", "комментария", "комментариев")}${open ? ` · <b class="neg">${open} ${plural(open, "вопрос", "вопроса", "вопросов")}</b>` : ""}</div>${v ? `<div class="s">✓ ${esc(v.name)}</div>` : ""}</div></button>`;
+  }).join("");
+  setTimeout(() => loadThumbs(S.mbphotos.filter(p => p.kind === "photo").map(p => p.id)), 0);
+  return head("Атмосфера", "more") + `<p class="mini" style="margin:-6px 4px 14px">Собирайте референсы и пожелания по каждому подрядчику — потом одной кнопкой отправите им.</p><div class="mbgrid">${html}</div>`;
+}
+function vBoard(key) {
+  const b = boardByKey(key); if (!b) return vMood();
+  const ph = S.mbphotos.filter(p => p.board === key).sort((a, c) => (c.createdAt || 0) - (a.createdAt || 0));
+  const cm = S.mbcomments.filter(c => c.board === key).sort((a, c) => (a.createdAt || 0) - (c.createdAt || 0));
+  const v = boardVendor(b);
+  setTimeout(() => loadThumbs(ph.filter(p => p.kind === "photo").map(p => p.id)), 0);
+  return head(b.emoji + " " + b.name, "mood") + `
+  ${v ? `<div class="banner" style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span>Подрядчик: <b>${esc(v.name)}</b></span><button class="lnk" data-vendor="${esc(v.id)}" style="color:var(--accent);font-weight:700">Открыть</button></div>` : b.cat ? `<div class="banner">Подрядчик пока не выбран — референсы помогут при выборе.</div>` : ""}
+  <h2>Референсы · ${ph.length}</h2>
+  <div class="mbphotos">${ph.map(p => p.kind === "link"
+    ? `<button class="mbph mblink" data-mbp="${esc(p.id)}"><span>🔗</span><b>${esc(linkHost(p.url))}</b>${p.caption ? `<small>${esc(p.caption)}</small>` : ""}</button>`
+    : `<button class="mbph" data-mbp="${esc(p.id)}">${thumbs[p.id] ? `<img src="${thumbs[p.id]}" alt="${esc(p.caption || "")}" loading="lazy">` : `<i class="skel" style="margin:0;height:100%"></i>`}${p.caption ? `<small>${esc(p.caption)}</small>` : ""}</button>`).join("")}
+    ${canWrite ? `<label class="mbph mbadd wr">＋<span>Фото</span><input type="file" accept="image/*" multiple data-mbfile="${key}" hidden></label><button class="mbph mbadd wr" data-mblink="${key}">🔗<span>Ссылка</span></button>` : ""}
+  </div>
+  ${!ph.length && !canWrite ? '<div class="empty">Пока пусто</div>' : ""}
+  <h2>Пожелания и вопросы <button class="lnk" data-mbcopy="${key}">📋 Скопировать для подрядчика</button></h2>
+  <div class="card list">${cm.length ? cm.map(c => swipe("mbcomments", c.id, `<div class="row cm ${c.resolved ? "done" : ""}">${c.type === "question" ? `<button class="ck ${c.resolved ? "on" : ""}" data-cmres="${esc(c.id)}" aria-label="Решено"></button>` : ""}<div class="grow"><div class="t" style="white-space:pre-wrap;font-weight:500">${esc(c.text)}</div><div class="s">${pill(CTYPE, c.type || "note")}${c.by === "p1" || c.by === "p2" ? `<span>${esc(who(c.by))}</span>` : ""}<span>${esc(fmtShort(new Date(c.createdAt || Date.now())))}</span>${c.type === "question" && c.resolved ? '<span class="pill s-paid">решено</span>' : ""}</div></div></div>`)).join("") : '<div class="empty">Напишите, что важно: цвета, настроение, что точно не надо, вопросы по смете…</div>'}</div>
+  ${canWrite ? `<form class="cmform card pad wr" data-cmform="${key}" novalidate style="margin-top:12px">
+    <div class="seg" style="margin-bottom:10px">${Object.entries(CTYPE).map(([k, [l]], i) => `<button type="button" class="${i === 0 ? "on" : ""}" data-cmtype="${k}">${l}</button>`).join("")}</div>
+    <div class="f" style="margin:0"><textarea name="text" placeholder="Например: хотим больше зелени и пионы, без роз" style="min-height:70px"></textarea></div>
+    <button class="btn pri w" type="submit" style="margin-top:10px">Добавить</button></form>` : ""}`;
+}
+function showMoodPhoto(id) {
+  const p = S.mbphotos.find(x => x.id === id); if (!p) return;
+  const bg = openSheet(p.kind === "link" ? "Ссылка" : "Референс", `
+    ${p.kind === "link" ? `<p class="info">${linkHTML(p.url)}</p>` : `<div class="mbfull"><span class="mini">Загружаем…</span></div>`}
+    ${canWrite ? `<div class="f" style="margin-top:12px"><label>Подпись</label><input name="cap" value="${esc(p.caption || "")}" placeholder="Что нравится в этом варианте"></div>
+    <div class="btnrow"><button class="btn danger" data-del>Удалить</button><button class="btn pri" data-save>Сохранить</button></div>` : p.caption ? `<p class="info">${esc(p.caption)}</p>` : ""}`);
+  if (p.kind === "photo") loadFull(id).then(src => { const box = bg.querySelector(".mbfull"); if (box) box.innerHTML = src ? `<img src="${src}" alt="">` : '<span class="mini">Фото недоступно без интернета</span>'; });
+  const sv = bg.querySelector("[data-save]"); if (sv) sv.onclick = async () => { await upd("mbphotos", id, {caption: bg.querySelector('[name="cap"]').value.trim()}); closeSheet(bg); };
+  const dl = bg.querySelector("[data-del]"); if (dl) dl.onclick = async () => { if (await ask("Референс будет удалён.")) { await deleteMoodPhoto(p); closeSheet(bg); } };
+}
+function addMoodLink(board) {
+  openForm({title: "Ссылка на референс", fields: [{k: "url", l: "Ссылка (Pinterest, Instagram, сайт)", ph: "https://pinterest.com/…"}, {k: "caption", l: "Подпись", ph: "Что нравится"}], required: "url", saveLabel: "Добавить",
+    onSave: async d => { await add("mbphotos", {board, kind: "link", url: d.url, caption: d.caption}); }});
+}
+function boardText(key) {
+  const b = boardByKey(key), cm = S.mbcomments.filter(c => c.board === key).sort((a, c) => (a.createdAt || 0) - (c.createdAt || 0));
+  const wishes = cm.filter(c => c.type === "wish"), qs = cm.filter(c => c.type === "question" && !c.resolved);
+  const links = S.mbphotos.filter(p => p.board === key && p.kind === "link");
+  let t = `${b.name} — ${name1()} и ${name2()}, свадьба ${st().date ? fmtD(st().date, true) : ""}${st().venue ? ", " + st().venue : ""}\n`;
+  if (wishes.length) t += `\nНаши пожелания:\n${wishes.map(c => "• " + c.text).join("\n")}\n`;
+  if (qs.length) t += `\nВопросы:\n${qs.map((c, i) => `${i + 1}. ${c.text}`).join("\n")}\n`;
+  if (links.length) t += `\nРеференсы:\n${links.map(p => "• " + p.url + (p.caption ? " — " + p.caption : "")).join("\n")}\n`;
+  if (!wishes.length && !qs.length && !links.length) return "";
+  return t.trim();
+}
+
+/* ---------- SCHEDULE ---------- */
+const SCHED_TPL = [
+  ["08:00", "Сборы невесты", "Визажист, стилист, фотограф", "Номер / дом"],
+  ["10:30", "Сборы жениха", "Фотограф", ""],
+  ["12:00", "Первая встреча и фотосессия пары", "Фотограф, рилсмейкер", ""],
+  ["14:30", "Сбор гостей, welcome-фуршет", "Координатор", "Улица у площадки"],
+  ["15:30", "Выездная регистрация", "Координатор, ведущий", "Улица у площадки"],
+  ["16:00", "Поздравления и общее фото", "Фотограф", ""],
+  ["16:30", "Вход пары, начало банкета", "Ведущий, DJ", "Зал"],
+  ["17:00", "Первый блок программы", "Ведущий", "Зал"],
+  ["18:30", "Горячее", "Площадка", "Зал"],
+  ["19:00", "Живая музыка", "Кавер-группа", "Зал"],
+  ["20:30", "Танец молодожёнов", "DJ", "Зал"],
+  ["21:00", "Торт", "Кондитер, площадка", "Зал"],
+  ["22:00", "Финал вечера", "Ведущий", ""],
+  ["23:00", "Окончание, трансфер гостей", "Координатор", ""]
+];
+const schedSorted = () => [...S.schedule].sort((a, b) => (a.time || "99").localeCompare(b.time || "99") || (a.createdAt || 0) - (b.createdAt || 0));
+function vSchedule() {
+  const items = schedSorted();
+  return head("Расписание", "more") + `
+  <p class="mini" style="margin:-6px 4px 14px">Тайминг свадебного дня${st().date ? " · " + esc(fmtD(st().date, true)) : ""}${st().venue ? " · " + esc(st().venue) : ""}</p>
+  ${items.length ? `<div class="card list tl">${items.map(x => swipe("schedule", x.id, `<button class="row" data-sch="${esc(x.id)}"><div class="tm">${esc(x.time || "—")}</div><div class="grow"><div class="t">${esc(x.title)}</div><div class="s">${[x.place ? "📍 " + x.place : "", x.who ? "👤 " + x.who : ""].filter(Boolean).map(esc).join(" · ")}</div>${x.note ? `<div class="s">${esc(x.note)}</div>` : ""}</div></button>`)).join("")}<button class="row addrow wr" data-act="schedItem">＋ Добавить пункт</button></div>
+  <div class="btnrow"><button class="btn" data-act="schedCopy">📋 Скопировать тайминг</button></div>`
+  : `<div class="card pad" style="text-align:center"><p style="margin:4px 0 14px">Расписание пока пустое.</p>${canWrite ? `<button class="btn pri w" data-act="schedTpl">Заполнить типовым таймингом</button><div class="btnrow"><button class="btn w" data-act="schedItem">＋ Добавить пункт вручную</button></div>` : ""}</div>`}` + (items.length ? fab("schedItem") : "");
+}
+function editSched(x) {
+  const fields = [{k: "time", l: "Время", ph: "15:30", half: true}, {k: "place", l: "Где", ph: "Зал, улица…", half: true}, {k: "title", l: "Что происходит"}, {k: "who", l: "Кто отвечает", ph: "Координатор, ведущий…"}, {k: "note", l: "Заметка", t: "area"}];
+  openForm({title: x ? "Пункт расписания" : "Новый пункт", fields, required: "title", vals: x || {},
+    onSave: async d => { const m = /^(\d{1,2})[:.\s]?(\d{2})$/.exec(d.time.trim()); if (d.time && (!m || +m[1] > 23 || +m[2] > 59)) throw toast("Время в формате 15:30"); if (m) d.time = m[1].padStart(2, "0") + ":" + m[2]; if (x) await upd("schedule", x.id, d); else await add("schedule", d); },
+    onDelete: x ? () => del("schedule", x.id) : null});
+  const t = sheetStack[sheetStack.length - 1]; const ti = t && t.querySelector('[name="time"]'); if (ti) ti.setAttribute("inputmode", "numeric");
+}
+const schedText = () => `Тайминг свадьбы ${name1()} и ${name2()}${st().date ? " — " + fmtD(st().date, true) : ""}${st().venue ? ", " + st().venue : ""}\n\n` + schedSorted().map(x => `${x.time || "--:--"}  ${x.title}${x.place ? " (" + x.place + ")" : ""}${x.who ? " — " + x.who : ""}`).join("\n");
+function copyText(t, okMsg) { navigator.clipboard.writeText(t).then(() => toast(okMsg || "Скопировано"), () => { openSheet("Текст для копирования", `<textarea style="width:100%;min-height:260px;font:inherit;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--card)">${esc(t)}</textarea>`); }); }
+
 /* ---------- EXPORT ---------- */
 async function exportXlsx() {
   if (!window.XLSX) return toast("Модуль Excel ещё загружается — попробуйте через пару секунд");
@@ -1253,6 +1435,7 @@ async function exportXlsx() {
   sheet("Бюджет", [["Категория", "План, ₽", "По договорам, ₽", "Оплачено, ₽", "Осталось оплатить, ₽"], ...cats().map(c => { const x = catStats(c); return [c.name, x.planned, x.contract, x.paid, x.contract - x.paid]; }), [], ["Итого", T.planned, T.contract, T.paid, T.toPay], ["Общий бюджет", T.budget], ["Свободно", T.free]], [26, 12, 16, 14, 18]);
   sheet("Подрядчики", [["Категория", "Подрядчик", "Статус", "Стоимость, ₽", "Оплачено, ₽", "Остаток, ₽", "Контакт", "Телефон", "Ссылка", "Договор", "Заметки"], ...S.vendors.map(v => [catById(v.catId)?.name || "", v.name, VST[v.status]?.[0] || "", +v.price || 0, vPaid(v), (+v.price || 0) - vPaid(v), v.contact || "", v.phone || "", v.link || "", v.contract || "", v.notes || ""])], [20, 24, 12, 13, 13, 13, 16, 16, 24, 24, 30]);
   sheet("Платежи", [["Дата", "Подрядчик", "Тип", "Способ", "Сумма, ₽", "Статус", "Комментарий"], ...[...S.payments].sort((a, b) => (a.date || "") < (b.date || "") ? -1 : 1).map(p => [p.date || "", vendorById(p.vendorId)?.name || "", PTYPE[p.type] || "", PMETH[p.method] || "", +p.amount || 0, p.status === "paid" ? "Оплачено" : "Запланировано", p.note || ""])], [12, 24, 14, 14, 12, 14, 30]);
+  sheet("Тайминг", [["Время", "Что", "Где", "Кто отвечает", "Заметка"], ...schedSorted().map(x => [x.time || "", x.title, x.place || "", x.who || "", x.note || ""])], [8, 36, 20, 26, 30]);
   sheet("Расходы", [["Дата", "На что", "Категория", "Сумма, ₽", "Кто платил", "Способ", "Чек", "Заметка"], ...[...S.expenses].sort((a, b) => (a.date || "").localeCompare(b.date || "")).map(x => [x.date || "", x.title || "", catById(x.catId)?.name || "", +x.amount || 0, PAYER[x.payer] ? PAYER[x.payer]() : "", PMETH[x.method] || "", x.hasReceipt ? "есть" : "", x.note || ""])], [12, 28, 20, 12, 12, 14, 6, 30]);
   sheet("Покупки", [["Покупка", "Категория", "Статус", "Цена, ₽", "Кто", "Ссылка"], ...S.purchases.map(p => [p.title, catById(p.catId)?.name || "", PUR[p.status]?.[0] || "", +p.price || 0, who(p.who), p.link || ""])], [28, 20, 12, 12, 12, 30]);
   sheet("Гости", [["Имя", "Сторона", "Группа", "Статус", "Стол", "Телефон", "Заметка"], ...[...S.guests].sort((a, b) => String(a.name).localeCompare(String(b.name), "ru")).map(g => [g.name, sideLabel(g.side), g.group || "", RSVP[g.rsvp]?.[0] || "", tableById(g.tableId)?.name || "", g.phone || "", g.note || ""])], [26, 22, 12, 12, 16, 16, 30]);
@@ -1264,7 +1447,7 @@ async function exportXlsx() {
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-copy],[data-go],[data-act],[data-vendor],[data-addvendor],[data-addcand],[data-payment],[data-vf],[data-tf],[data-pf],[data-gf],[data-lf],[data-tick],[data-task],[data-cat],[data-exp],[data-pur],[data-guest],[data-seat],[data-table]");
+  const t = e.target.closest("[data-copy],[data-go],[data-act],[data-vendor],[data-addvendor],[data-addcand],[data-payment],[data-vf],[data-tf],[data-pf],[data-gf],[data-lf],[data-tick],[data-task],[data-cat],[data-exp],[data-mbp],[data-mblink],[data-mbcopy],[data-cmres],[data-cmtype],[data-sch],[data-pur],[data-guest],[data-seat],[data-table]");
   if (!t || t.closest(".sheet")) return;
   const ds = t.dataset;
   if (ds.copy) { navigator.clipboard.writeText(ds.copy).then(() => toast("Скопировано — отправьте в мессенджер"), () => toast("Не удалось скопировать")); return; }
@@ -1287,6 +1470,12 @@ document.addEventListener("click", e => {
   if (ds.task) return editTask(S.tasks.find(x => x.id === ds.task));
   if (ds.cat) return showCategory(catById(ds.cat));
   if (ds.exp) return editExpense(S.expenses.find(x => x.id === ds.exp));
+  if (ds.mbp) return showMoodPhoto(ds.mbp);
+  if (ds.mblink) return addMoodLink(ds.mblink);
+  if (ds.mbcopy) { const t = boardText(ds.mbcopy); return t ? copyText(t, "Скопировано — отправьте подрядчику") : toast("Добавьте пожелания или вопросы"); }
+  if (ds.cmres) { const c = S.mbcomments.find(x => x.id === ds.cmres); if (c && canWrite) upd("mbcomments", c.id, {resolved: !c.resolved}); return; }
+  if (ds.cmtype) { t.parentElement.querySelectorAll("[data-cmtype]").forEach(b => b.classList.toggle("on", b === t)); return; }
+  if (ds.sch) return editSched(S.schedule.find(x => x.id === ds.sch));
   if (ds.pur) return editPurchase(S.purchases.find(x => x.id === ds.pur));
   if (ds.guest) return editGuest(S.guests.find(x => x.id === ds.guest));
   if (ds.seat) return seatGuest(ds.seat);
@@ -1301,6 +1490,9 @@ document.addEventListener("click", e => {
     if (a === "table") return editTable(null);
     if (a === "category") return editCategory(null);
     if (a === "expense") return editExpense(null);
+    if (a === "schedItem") return editSched(null);
+    if (a === "schedCopy") return copyText(schedText(), "Тайминг скопирован");
+    if (a === "schedTpl") { (async () => { for (const [time, title, who2, place] of SCHED_TPL) await add("schedule", {time, title, who: who2, place}); toast("Типовой тайминг добавлен — поправьте под себя"); })(); return; }
     if (a === "export") return exportXlsx();
     if (a === "backup") return backupJSON();
     if (a === "retry") return start();
@@ -1318,9 +1510,17 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => {
   if (e.target.matches("[data-dr]")) calcDrinks();
+  if (e.target.matches("[data-mbfile]") && e.target.files.length) { const fs = [...e.target.files], k = e.target.dataset.mbfile; e.target.value = ""; uploadMoodPhotos(k, fs); }
   if (e.target.matches("[data-restore]") && e.target.files[0]) { const f = e.target.files[0]; e.target.value = ""; restoreJSON(f); }
 });
 document.addEventListener("submit", async e => {
+  if (e.target.matches("[data-cmform]")) {
+    e.preventDefault(); if (!canWrite) return;
+    const f = e.target, text = f.text.value.trim(); if (!text) { f.text.focus(); return; }
+    const type = (f.querySelector("[data-cmtype].on") || {}).dataset?.cmtype || "wish";
+    await add("mbcomments", {board: f.dataset.cmform, type, text, resolved: false});
+    return;
+  }
   if (e.target.id !== "setf") return;
   e.preventDefault(); if (!canWrite) return;
   const d = readForm(e.target, settingsFields());
