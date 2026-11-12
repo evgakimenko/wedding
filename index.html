@@ -164,6 +164,10 @@ h2 .lnk{text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600
 .tl .tm{font:700 17px Manrope,sans-serif;color:var(--accent);min-width:56px;align-self:flex-start;padding-top:1px}
 .cm .t{font-size:15px}
 @media (min-width:900px){.mbgrid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}.mbphotos{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.mbcov,.mbcov img,.mbcov i,.mbcov span{height:150px}}
+.money{position:relative}
+.f .money input{padding-right:36px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.money span{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:600;pointer-events:none}
+.amt input{font-variant-numeric:tabular-nums}
 .dx{display:none!important}
 @media (hover:hover){.row:hover{background:var(--soft)}button.row,.chip,.btn,.tabbar button{transition:background .12s}}
 @media (min-width:900px){
@@ -229,7 +233,17 @@ const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const num = v => { const n = parseFloat(String(v ?? "").replace(/\s/g, "").replace(",", ".").replace(/[^\d.-]/g, "")); return isFinite(n) ? n : 0; };
-const rub = n => Math.round(+n || 0).toLocaleString("ru-RU").replace(/,/g, " ") + " ₽";
+const fmtMoneyStr = v => { let t = String(v ?? "").replace(/[^\d.,]/g, "").replace(".", ","); const i = t.indexOf(","); let a = i < 0 ? t : t.slice(0, i), b = i < 0 ? null : t.slice(i + 1).replace(/,/g, "").slice(0, 2); a = a.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, " "); return b === null ? a : a + "," + b; };
+function moneyInput(el) {
+  const pos = el.selectionStart ?? el.value.length;
+  const digitsBefore = el.value.slice(0, pos).replace(/[^\d,]/g, "").length;
+  const out = fmtMoneyStr(el.value);
+  if (out === el.value) return;
+  el.value = out;
+  let n = 0, p = 0; while (p < out.length && n < digitsBefore) { if (/[\d,]/.test(out[p])) n++; p++; }
+  try { el.setSelectionRange(p, p); } catch (e) {}
+}
+const rub = n => (Math.round((+n || 0) * 100) / 100).toLocaleString("ru-RU", {maximumFractionDigits: 2}).replace(/,(?=\d{3})/g, " ") + " ₽";
 const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
 const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -421,9 +435,10 @@ function fieldHTML(f, v) {
   else if (f.t === "check") return `<label class="tog">${esc(f.l)}<input type="checkbox" name="${f.k}"${val ? " checked" : ""}${dis}></label>`;
   else {
     const type = f.t === "date" ? "date" : f.t === "tel" ? "tel" : f.t === "url" ? "url" : "text";
-    const im = f.t === "num" ? ' inputmode="decimal"' : "";
-    const shown = f.t === "num" && val !== "" && val != null ? (+val ? Math.round(+val * 100) / 100 : "") : val;
+    const im = f.t === "num" ? ' inputmode="decimal" data-money' : "";
+    const shown = f.t === "num" && val !== "" && val != null ? (+val ? fmtMoneyStr(String(Math.round(+val * 100) / 100).replace(".", ",")) : "") : val;
     inner = `<input id="${id}" name="${f.k}" type="${type}"${im} value="${esc(shown)}" placeholder="${esc(f.ph || "")}" autocomplete="off"${dis}>`;
+    if (f.t === "num" && /₽/.test(f.l)) inner = `<div class="money">${inner}<span>₽</span></div>`;
   }
   return `<div class="f"><label for="${id}">${esc(f.l)}</label>${inner}</div>`;
 }
@@ -1215,7 +1230,7 @@ function editExpense(x, catId) {
   let newImg = null, removeImg = false;
   const dis = canWrite ? "" : " disabled";
   const bg = openSheet(x ? "Расход" : "Новый расход", `<form novalidate class="expf">
-    <div class="amt"><input name="amount" inputmode="decimal" placeholder="0" value="${x ? esc(Math.round(+x.amount * 100) / 100) : ""}" autocomplete="off"${dis}><span>₽</span></div>
+    <div class="amt"><input name="amount" inputmode="decimal" data-money placeholder="0" value="${x ? esc(fmtMoneyStr(String(Math.round(+x.amount * 100) / 100).replace(".", ","))) : ""}" autocomplete="off"${dis}><span>₽</span></div>
     <div class="f"><label>Категория</label><div class="chips ecats">${cats().map(c => `<button type="button" class="chip ${c.id === v.catId ? "on" : ""}" data-ec="${esc(c.id)}">${esc(c.emoji || "")} ${esc(c.name)}</button>`).join("")}</div></div>
     ${formHTML([{k: "title", l: "На что", ph: "Например, пробный макияж"}, {k: "date", l: "Дата", t: "date", half: true}, {k: "method", l: "Способ", t: "sel", o: Object.entries(PMETH), half: true}], v)}
     <div class="f"><label>Кто платил</label><div class="seg">${["p1", "p2", "both"].map(k => `<button type="button" class="${v.payer === k ? "on" : ""}" data-payer="${k}">${esc(PAYER[k]())}</button>`).join("")}</div></div>
@@ -1504,7 +1519,14 @@ document.addEventListener("click", e => {
   }
 });
 document.addEventListener("keydown", e => { if (e.key === "Escape" && sheetStack.length) closeSheet(); });
+document.addEventListener("keydown", e => {
+  const el = e.target; if (!el.matches || !el.matches("input[data-money]") || el.selectionStart !== el.selectionEnd) return;
+  const p = el.selectionStart;
+  if (e.key === "Backspace" && p > 0 && el.value[p - 1] === " ") el.setSelectionRange(p - 1, p - 1);
+  if (e.key === "Delete" && el.value[p] === " ") el.setSelectionRange(p + 1, p + 1);
+});
 document.addEventListener("input", e => {
+  if (e.target.matches && e.target.matches("input[data-money]")) moneyInput(e.target);
   if (e.target.id === "gq") { ui.q = e.target.value; applyGuestSearch(); }
   if (e.target.matches("[data-dr]")) calcDrinks();
 });
