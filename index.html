@@ -131,6 +131,45 @@ h2 .lnk{text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600
 .mini{font-size:12px;color:var(--muted)}
 .neg{color:var(--danger)}
 .ro .fab,.ro .wr{display:none!important}
+.dx{display:none!important}
+@media (hover:hover){.row:hover{background:var(--soft)}button.row,.chip,.btn,.tabbar button{transition:background .12s}}
+@media (min-width:900px){
+  body{font-size:15px}
+  .dx{display:flex!important}
+  .mo{display:none!important}
+  #app{max-width:1180px;margin:0 0 0 250px;padding:28px 40px 60px}
+  .tabbar{top:0;bottom:0;left:0;right:auto;width:250px;border-top:0;border-right:1px solid var(--line);padding:0;background:var(--card)}
+  .tabbar .in{flex-direction:column;align-items:stretch;height:100%;padding:22px 14px;gap:2px;overflow-y:auto}
+  .tabbar button{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;padding:10px 12px;border-radius:12px;font-size:14px;color:var(--ink);font-weight:600}
+  .tabbar button svg{width:20px;height:20px;color:var(--muted)}
+  .tabbar button.on{background:var(--soft);color:var(--ink)}
+  .tabbar button.on svg{color:var(--accent)}
+  .tabbar .brand{flex-direction:column;padding:4px 12px 18px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+  .tabbar .bn{font:600 26px/1.1 "Cormorant Garamond",Georgia,serif}
+  .tabbar .bn span{color:var(--accent2);font-style:italic}
+  .tabbar .bd{font-size:12px;color:var(--muted);margin-top:4px}
+  .tabbar .sep{height:1px;background:var(--line);margin:10px 4px}
+  .tabbar .sidefoot{margin-top:auto;padding:12px;font-size:12px;color:var(--muted);flex-direction:column;word-break:break-all}
+  h1.ttl{font-size:40px;margin-top:0}
+  .hero{display:grid;grid-template-columns:1fr auto;align-items:center;text-align:left;padding:30px 36px}
+  .hero .names{font-size:46px}.hero .count{margin:0;text-align:right;font-size:76px}
+  .hero .date{grid-column:1;grid-row:2;margin-top:4px}.hero .count{grid-column:2;grid-row:1/span 2}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;align-items:start}
+  .catgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;align-items:start}
+  .stats.s4d{grid-template-columns:repeat(4,1fr)}
+  .tables{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+  .chips{margin:0;padding-left:0;padding-right:0;flex-wrap:wrap;overflow:visible}
+  .fab{right:40px;bottom:36px}
+  .sheet-bg{align-items:center}
+  .sheet{max-width:600px;border-radius:22px;max-height:88vh;padding:14px 26px 26px;margin:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .sheet .grab{display:none}
+  .toast{bottom:40px;left:calc(50% + 125px)}
+  body.noside #app{margin:0 auto;max-width:560px}
+  .ob,.join,.auth,.recover{max-width:480px;margin-left:auto!important;margin-right:auto!important}
+  .banner{max-width:none}
+}
+@media (min-width:1400px){.catgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
 </style>
 </head>
 <body>
@@ -413,6 +452,7 @@ const skel = `<div style="height:40px"></div><div class="skel" style="height:220
 function render() {
   const app = $("#app"), tb = $("#tabbar");
   document.body.classList.toggle("ro", !canWrite);
+  document.body.classList.toggle("noside", phase !== "app" || !S.settings);
   if (phase !== "app") {
     tb.innerHTML = "";
     if (phase === "boot") app.innerHTML = skel;
@@ -431,7 +471,9 @@ function render() {
     return;
   }
   const r = route(), active = SUB[r] || r;
-  tb.innerHTML = `<div class="in">${TABS.map(([k, l]) => `<button class="${k === active ? "on" : ""}" data-go="${k}">${IC[k]}<span>${l}</span></button>`).join("")}</div>`;
+  const dl = daysLeft();
+  const SIDE_EXTRA = [["purchases", "Покупки", "bag"], ["guests", "Гости", "guests"], ["seating", "Рассадка", "seat"], ["drinks", "Напитки", "glass"], ["settings", "Настройки", "gear"]];
+  tb.innerHTML = `<div class="in"><div class="brand dx"><div class="bn">${esc(name1())} <span>&amp;</span> ${esc(name2())}</div><div class="bd">${st().date ? esc(fmtD(st().date, true)) : ""}${dl != null && dl > 0 ? ` · ${dl} ${plural(dl, "день", "дня", "дней")}` : ""}</div></div>${TABS.map(([k, l]) => `<button class="${k === active ? "on" : ""}${k === "more" ? " mo" : ""}" data-go="${k}">${IC[k]}<span>${l}</span></button>`).join("")}<div class="sep dx"></div>${SIDE_EXTRA.map(([k, l, ic]) => `<button class="dx ${k === r ? "on" : ""}" data-go="${k}">${IC[ic]}<span>${l}</span></button>`).join("")}<button class="dx" data-act="export">${IC.xls}<span>Excel</span></button><div class="dx sidefoot">${esc(roleName(me))}${session && session.user ? " · " + esc(session.user.email || "") : ""}</div></div>`;
   const banner = (!canWrite ? `<div class="banner">👀 Режим просмотра — вы видите планер, но не можете его менять.</div>` : "")
     + (offline ? `<div class="banner">Нет интернета — показаны сохранённые данные.${outbox.length ? ` Изменений ждут отправки: ${outbox.length}.` : ""} Всё синхронизируется, когда связь вернётся.</div>` : "");
   const V = {home: vHome, vendors: vVendors, budget: vBudget, tasks: vTasks, more: vMore, purchases: vPurchases, guests: vGuests, seating: vSeating, drinks: vDrinks, settings: vSettings}[r];
@@ -535,6 +577,7 @@ function vHome() {
     <div class="date">${s.date ? esc(fmtD(s.date, true)) : ""}${s.venue ? " · " + esc(s.venue) : ""}${s.city ? ", " + esc(s.city) : ""}</div>
     ${cnt}
   </div>
+  <div class="cols"><div>
   <h2>Бюджет <button class="lnk" data-go="budget">Подробнее</button></h2>
   <div class="card pad" data-go="budget" role="button">
     <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px"><div><div class="mini">Оплачено</div><div class="big">${rub(T.paid)}</div></div><div style="text-align:right"><div class="mini">Бюджет</div><div style="font-weight:700">${T.budget ? rub(T.budget) : "не задан"}</div></div></div>
@@ -543,9 +586,11 @@ function vHome() {
   </div>
   <h2>Ближайшие платежи <button class="lnk" data-go="budget">Все</button></h2>
   <div class="card list">${upcoming.length ? upcoming.map(payRow).join("") : `<div class="empty">Запланированных платежей нет.<br>Добавьте их в карточке подрядчика.</div>`}</div>
+  </div><div>
   <h2>Что сделать сейчас <button class="lnk" data-go="tasks">Все задачи</button></h2>
   <div class="card list">${todo.length ? todo.map(taskRow).join("") : `<div class="empty">Всё сделано на этом этапе 🎉</div>`}</div>
-  <div class="stats" style="margin-top:22px">
+  </div></div>
+  <div class="stats s4d" style="margin-top:22px">
     <button class="stat" data-go="vendors" style="text-align:left"><div class="v">${booked} из ${S.categories.length}</div><div class="l">подрядчиков с договором</div></button>
     <button class="stat" data-go="tasks" style="text-align:left"><div class="v">${tDone} из ${S.tasks.length}</div><div class="l">задач выполнено</div></button>
     <button class="stat" data-go="guests" style="text-align:left"><div class="v">${G.yes} из ${G.total || +s.guests || 0}</div><div class="l">гостей подтвердили</div></button>
@@ -572,19 +617,21 @@ function vVendors() {
   html += `<div class="chips">${[["all", "Все", n(v => v.status !== "rejected")], ["cand", "Смотрим", n(isCand)], ["sel", "Выбраны", n(isSel)], ["rejected", "Отказались", n(v => v.status === "rejected")]].map(([k, l, c]) => `<button class="chip ${f === k ? "on" : ""}" data-vf="${k}">${l}<b>${c}</b></button>`).join("")}</div>`;
   if (f === "all" || f === "cand") html += `<p class="mini" style="margin:8px 4px 0">«Смотрим» — кандидаты: ссылка, ваш комментарий и оценка. Когда определитесь — откройте кандидата и нажмите «Выбрать».</p>`;
   let any = false;
+  html += `<div class="catgrid">`;
   for (const c of cats()) {
     const vs = S.vendors.filter(v => v.catId === c.id && flt(v)).sort(byOrder);
     if (!vs.length && f !== "all" && f !== "cand") continue;
     if (!vs.length && f === "cand") continue;
     any = true;
     const sel = vs.filter(isSel), cand = vs.filter(isCand), rej = vs.filter(v => v.status === "rejected");
-    html += `<h2><span>${esc(c.emoji || "")} ${esc(c.name)}</span>${catBooked(c.id) ? '<span class="pill s-contract">✓ выбран</span>' : ""}</h2><div class="card list">`;
+    html += `<section class="cat"><h2><span>${esc(c.emoji || "")} ${esc(c.name)}</span>${catBooked(c.id) ? '<span class="pill s-contract">✓ выбран</span>' : ""}</h2><div class="card list">`;
     html += sel.map(vendorRow).join("");
     if (cand.length) html += `${sel.length ? `<div class="row" style="padding-top:8px;padding-bottom:4px"><span class="mini" style="font-weight:700;letter-spacing:.06em;text-transform:uppercase">Смотрим · ${cand.length}</span></div>` : ""}${cand.map(candRow).join("")}`;
     html += rej.map(candRow).join("");
     if (f === "all" || f === "cand") html += `<button class="row ghost wr" data-addcand="${esc(c.id)}"><div class="grow"><div class="t">+ ${sel.length ? "Добавить ещё" : cand.length ? "Добавить кандидата" : "Добавить кандидата или подрядчика"}</div></div></button>`;
-    html += `</div>`;
+    html += `</div></section>`;
   }
+  html += `</div>`;
   const orphan = S.vendors.filter(v => !catById(v.catId) && flt(v));
   if (orphan.length) { any = true; html += `<h2>Без категории</h2><div class="card list">${orphan.map(v => isSel(v) ? vendorRow(v) : candRow(v)).join("")}</div>`; }
   if (!any) html += `<div class="empty">${f === "rejected" ? "Отказов нет" : f === "cand" ? "Кандидатов пока нет — нажмите «+», чтобы добавить" : "Здесь пока пусто"}</div>`;
@@ -725,11 +772,14 @@ function vBudget() {
     <div class="stat"><div class="v">${rub(T.contract)}</div><div class="l">по договорам и покупкам</div></div>
     <div class="stat"><div class="v ${T.budget && T.planned > T.budget ? "neg" : ""}">${rub(T.planned)}</div><div class="l">распределено по плану</div></div>
   </div>
+  <div class="cols"><div>
   <h2>План и факт по категориям <button class="lnk wr" data-act="category">+ Категория</button></h2>
   <div class="card list">${cats().map(c => { const x = catStats(c); const over = x.planned && x.contract > x.planned; return `<button class="row" data-cat="${esc(c.id)}"><div class="grow"><div class="t">${esc(c.emoji || "")} ${esc(c.name)}</div><div style="margin-top:7px">${x.planned || x.contract ? `<div class="bar"><i class="${over ? "over" : "b1"}" style="width:${Math.min(100, x.paid / Math.max(x.planned, x.contract, 1) * 100)}%"></i><i class="b2" style="width:${Math.max(0, (x.contract - x.paid) / Math.max(x.planned, x.contract, 1) * 100)}%"></i></div>` : ""}</div><div class="s" style="margin-top:5px">план ${rub(x.planned)} · факт <span class="${over ? "neg" : ""}">${rub(x.contract)}</span></div></div><div class="r">${rub(x.paid)}<small>оплачено</small></div></button>`; }).join("") || '<div class="empty">Категорий нет</div>'}</div>
+  </div><div>
   <h2>Все платежи</h2>
   <div class="chips">${[["all", "Все"], ["planned", "Предстоящие"], ["paid", "Оплаченные"]].map(([k, l]) => `<button class="chip ${pf === k ? "on" : ""}" data-pf="${k}">${l}</button>`).join("")}</div>
   <div class="card list" style="margin-top:8px">${pays.length ? pays.map(p => payRow(p)).join("") : '<div class="empty">Платежей нет. Добавляйте задатки и доплаты в карточке подрядчика.</div>'}</div>
+  </div></div>
   <div style="margin-top:18px"><button class="btn w" data-act="export">${IC.xls.replace("<svg", '<svg width="20" height="20"')} Выгрузить в Excel</button></div>`;
 }
 function editCategory(c) {
@@ -755,13 +805,15 @@ function vTasks() {
   const lateN = S.tasks.filter(isLate).length;
   html += `<div class="chips">${[["all", "Все"], ["open", "Открытые"], ["late", `Просрочено${lateN ? " " + lateN : ""}`], ["p1", name1()], ["p2", name2()]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-tf="${k}">${esc(l)}</button>`).join("")}</div>`;
   const d = wDate();
+  html += `<div class="catgrid">`;
   for (const p of PER) {
     const ts = S.tasks.filter(t => t.period === p.key && flt(t)).sort((a, b) => (isDone(a) - isDone(b)) || byOrder(a, b));
     if (!ts.length) continue;
     const end = d ? new Date(d.getTime() - p.to * 864e5) : null;
     const tag = p.key === cur ? '<span class="pill s-now">сейчас</span>' : "";
-    html += `<h2><span>${esc(p.label)} ${tag}</span><span style="text-transform:none;letter-spacing:0">${end && p.key !== "day" ? "до " + esc(fmtShort(end)) : end ? esc(fmtShort(end)) : ""}</span></h2><div class="card list">${ts.map(taskRow).join("")}</div>`;
+    html += `<section class="cat"><h2><span>${esc(p.label)} ${tag}</span><span style="text-transform:none;letter-spacing:0">${end && p.key !== "day" ? "до " + esc(fmtShort(end)) : end ? esc(fmtShort(end)) : ""}</span></h2><div class="card list">${ts.map(taskRow).join("")}</div></section>`;
   }
+  html += `</div>`;
   if (!S.tasks.some(flt)) html += `<div class="empty">Здесь пусто</div>`;
   return html + fab("task");
 }
@@ -1096,6 +1148,7 @@ document.addEventListener("click", e => {
     }}); }
   }
 });
+document.addEventListener("keydown", e => { if (e.key === "Escape" && sheetStack.length) closeSheet(); });
 document.addEventListener("input", e => {
   if (e.target.id === "gq") { ui.q = e.target.value; applyGuestSearch(); }
   if (e.target.matches("[data-dr]")) calcDrinks();
