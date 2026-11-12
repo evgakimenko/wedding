@@ -268,21 +268,31 @@ const catLabel = id => { const c = catById(id); return c ? (c.emoji ? c.emoji + 
 const vendorById = id => S.vendors.find(v => v.id === id);
 const vPaid = v => sum(S.payments.filter(p => p.vendorId === v.id && p.status === "paid"), p => p.amount);
 const vPlanned = v => sum(S.payments.filter(p => p.vendorId === v.id && p.status !== "paid"), p => p.amount);
+const QTY = {active: "Все, кроме отказавшихся", yes: "Только «Придёт»", plan: "План из настроек", manual: "Вручную"};
+const qtyCount = k => k === "yes" ? S.guests.filter(g => g.rsvp === "yes").length : k === "plan" ? (+st().guests || 0) : S.guests.filter(g => g.rsvp !== "no").length;
+const itemQty = i => i.qty === "manual" ? (+i.n || 0) : qtyCount(i.qty || "active");
+const itemSum = i => i.mode === "guest" ? Math.round((+i.per || 0) * itemQty(i) * 100) / 100 : (+i.amount || 0);
+const vItems = v => Array.isArray(v && v.items) ? v.items : [];
+const vPrice = v => vItems(v).length ? sum(vItems(v), itemSum) : (+v.price || 0);
+const vApproxSum = v => sum(vItems(v).filter(i => i.approx), itemSum);
+const vApprox = v => vItems(v).some(i => i.approx);
+const rubV = v => (vApprox(v) ? "≈ " : "") + rub(vPrice(v));
+const itemPaid = (v, i) => sum(S.payments.filter(p => p.vendorId === v.id && p.itemId === i.id && p.status === "paid"), p => p.amount);
 const catBooked = cid => S.vendors.some(v => v.catId === cid && (v.status === "contract" || v.status === "paid"));
 function catStats(c) {
   const vs = S.vendors.filter(v => v.catId === c.id && v.status !== "rejected" && v.status !== "search" && v.status !== "talks"), ps = S.purchases.filter(p => p.catId === c.id), es = S.expenses.filter(e => e.catId === c.id);
   const spent = sum(es, e => e.amount);
-  const contract = sum(vs, v => v.price) + sum(ps, p => p.price) + spent;
+  const contract = sum(vs, vPrice) + sum(ps, p => p.price) + spent;
   const paid = sum(vs, vPaid) + sum(ps.filter(p => p.status === "bought"), p => p.price) + spent;
-  return {contract, paid, planned: +c.planned || 0};
+  return {contract, paid, planned: +c.planned || 0, approx: sum(vs, vApproxSum)};
 }
 function totals() {
   const all = cats().map(catStats);
   const orphanV = S.vendors.filter(v => !catById(v.catId) && (v.status === "contract" || v.status === "paid")), orphanP = S.purchases.filter(p => !catById(p.catId)), orphanE = S.expenses.filter(e => !catById(e.catId));
-  const contract = sum(all, x => x.contract) + sum(orphanV, v => v.price) + sum(orphanP, p => p.price) + sum(orphanE, e => e.amount);
+  const contract = sum(all, x => x.contract) + sum(orphanV, vPrice) + sum(orphanP, p => p.price) + sum(orphanE, e => e.amount);
   const paid = sum(all, x => x.paid) + sum(orphanV, vPaid) + sum(orphanP.filter(p => p.status === "bought"), p => p.price) + sum(orphanE, e => e.amount);
   const budget = +st().budget || 0;
-  return {budget, contract, paid, toPay: Math.max(0, contract - paid), free: budget - contract, planned: sum(all, x => x.planned)};
+  return {budget, contract, paid, toPay: Math.max(0, contract - paid), free: budget - contract, planned: sum(all, x => x.planned), approx: sum(all, x => x.approx) + sum(orphanV, vApproxSum)};
 }
 const perOf = k => PER.find(p => p.key === k) || PER[0];
 function periodNow() { const d = daysLeft(); if (d == null) return null; if (d <= 0) return "day"; const p = PER.find(p => d <= p.from && d > p.to); return p ? p.key : (d > PER[0].from ? "early" : "day"); }
@@ -654,11 +664,11 @@ const isCand = v => v.status === "search" || v.status === "talks";
 const isSel = v => v.status === "contract" || v.status === "paid";
 const stars = n => n ? "★".repeat(n) + "☆".repeat(5 - n) : "";
 function vendorRow(v) {
-  const paid = vPaid(v), price = +v.price || 0;
-  return swipe("vendors", v.id, `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}${v.contact ? `<span>${esc(v.contact)}</span>` : ""}</div>${price ? `<div style="margin-top:8px">${barHTML(paid, Math.max(0, price - paid), price)}</div>` : ""}</div><div class="r">${price ? rub(price) : "—"}${price ? `<small>оплачено ${rub(paid)}</small>` : ""}</div></button>`);
+  const paid = vPaid(v), price = vPrice(v);
+  return swipe("vendors", v.id, `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}${vApprox(v) ? '<span class="pill s-search">есть примерные суммы</span>' : ""}${v.contact ? `<span>${esc(v.contact)}</span>` : ""}</div>${price ? `<div style="margin-top:8px">${barHTML(paid, Math.max(0, price - paid), price)}</div>` : ""}</div><div class="r">${price ? rubV(v) : "—"}${price ? `<small>оплачено ${rub(paid)}</small>` : ""}</div></button>`);
 }
 function candRow(v) {
-  return swipe("vendors", v.id, `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${v.status === "talks" ? pill(VST, "talks") : ""}${v.rating ? `<span style="color:var(--accent2)">${stars(+v.rating)}</span>` : ""}${v.link ? "<span>🔗</span>" : ""}${v.notes ? `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(v.notes.split("\n")[0])}</span>` : ""}</div></div><div class="r">${+v.price ? rub(v.price) : ""}${+v.price ? "<small>предложение</small>" : ""}</div></button>`);
+  return swipe("vendors", v.id, `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${v.status === "talks" ? pill(VST, "talks") : ""}${v.rating ? `<span style="color:var(--accent2)">${stars(+v.rating)}</span>` : ""}${v.link ? "<span>🔗</span>" : ""}${v.notes ? `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(v.notes.split("\n")[0])}</span>` : ""}</div></div><div class="r">${vPrice(v) ? rubV(v) : ""}${vPrice(v) ? "<small>предложение</small>" : ""}</div></button>`);
 }
 function vVendors() {
   const f = ui.vf;
@@ -710,7 +720,8 @@ const candFields = () => [
 ];
 const fixRating = d => { if ("rating" in d) d.rating = d.rating ? +d.rating : 0; return d; };
 function editVendor(v, catId) {
-  openForm({title: v ? "Подрядчик" : "Новый подрядчик", fields: vendorFields(), required: "name",
+  const fl = vItems(v).length ? vendorFields().filter(f => f.k !== "price").map(f => f.k === "status" ? {...f, half: false} : f) : vendorFields();
+  openForm({title: v ? "Подрядчик" : "Новый подрядчик", fields: fl, before: vItems(v).length ? `<p class="mini" style="margin:-6px 0 12px">Стоимость считается из «Состава стоимости»: ${esc(rubV(v))}</p>` : "", required: "name",
     vals: v ? {...v, rating: v.rating ? String(v.rating) : ""} : {catId: catId || cats()[0]?.id, status: "contract"},
     onSave: async d => { fixRating(d); if (v) await upd("vendors", v.id, d); else { const id = await add("vendors", d); whenThere(() => vendorById(id), () => setTimeout(() => { if (!sheetStack.length) showVendor(id); }, 40)); } },
     onDelete: v ? async () => { for (const p of S.payments.filter(p => p.vendorId === v.id)) await del("payments", p.id); await del("vendors", v.id); closeAll(); } : null});
@@ -726,7 +737,7 @@ function chooseVendor(v) {
   const others = S.vendors.filter(x => x.catId === v.catId && x.id !== v.id && isCand(x));
   openForm({title: "Выбираем «" + v.name + "»", saveLabel: "Выбрать",
     before: `<p class="mini" style="margin:-6px 0 12px">Кандидат станет подрядчиком со статусом «Договор». Задаток можно внести следующим шагом.</p>`,
-    fields: [{k: "price", l: "Стоимость по договору, ₽", t: "num"}, {k: "phone", l: "Телефон", t: "tel", half: true}, {k: "contact", l: "Контактное лицо", half: true}, ...(others.length ? [{k: "rejectOthers", l: `Остальных кандидатов в категории (${others.length}) отметить «Отказались»`, t: "check", def: true}] : [])],
+    fields: [...(vItems(v).length ? [] : [{k: "price", l: "Стоимость по договору, ₽", t: "num"}]), {k: "phone", l: "Телефон", t: "tel", half: true}, {k: "contact", l: "Контактное лицо", half: true}, ...(others.length ? [{k: "rejectOthers", l: `Остальных кандидатов в категории (${others.length}) отметить «Отказались»`, t: "check", def: true}] : [])],
     vals: {price: v.price, phone: v.phone, contact: v.contact, rejectOthers: true},
     onSave: async d => {
       const ro = d.rejectOthers; delete d.rejectOthers;
@@ -739,7 +750,7 @@ const linkHTML = u => { if (!u) return ""; const href = /^https?:\/\//i.test(u) 
 function showVendor(id) {
   const v = vendorById(id); if (!v) return;
   const cand = !isSel(v);
-  const paid = vPaid(v), price = +v.price || 0, plan = vPlanned(v);
+  const paid = vPaid(v), price = vPrice(v), plan = vPlanned(v), items = vItems(v), apx = vApprox(v);
   const pays = S.payments.filter(p => p.vendorId === id).sort((a, b) => (a.date || "") < (b.date || "") ? -1 : 1);
   const info = `<div style="margin-top:12px">
     ${v.link ? `<p class="info"><span>Ссылка:</span> ${linkHTML(v.link)}</p>` : ""}
@@ -750,14 +761,17 @@ function showVendor(id) {
     ${v.notes ? `<p class="info" style="white-space:pre-wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px">${esc(v.notes)}</p>` : ""}
     </div>`;
   const body = cand ? `
-    <div style="display:flex;gap:8px;align-items:center;margin:-6px 0 6px;flex-wrap:wrap">${pill(VST, v.status)}<span class="mini">${esc(catLabel(v.catId))}</span>${price ? `<span class="mini">· предложение ${rub(price)}</span>` : ""}</div>
+    <div style="display:flex;gap:8px;align-items:center;margin:-6px 0 6px;flex-wrap:wrap">${pill(VST, v.status)}<span class="mini">${esc(catLabel(v.catId))}</span>${price ? `<span class="mini">· предложение ${esc(rubV(v))}</span>` : ""}</div>
     ${info}
     <div class="wr">${v.status === "rejected" ? `<div class="btnrow"><button class="btn" data-st="search">Вернуть в «Смотрим»</button></div>` : `<div class="btnrow"><button class="btn acc" data-choose>✓ Выбрать</button></div><div class="btnrow"><button class="btn" data-st="${v.status === "talks" ? "search" : "talks"}">${v.status === "talks" ? "Просто смотрим" : "Ведём переговоры"}</button><button class="btn" data-st="rejected">Отказались</button></div>`}
     <div class="btnrow"><button class="btn" data-edit>✎ Изменить</button><button class="btn danger" data-delv>Удалить</button></div></div>`
   : `
     <div style="display:flex;gap:8px;align-items:center;margin:-6px 0 12px;flex-wrap:wrap">${pill(VST, v.status)}<span class="mini">${esc(catLabel(v.catId))}</span></div>
-    <div class="kv"><div><span>По договору</span><b>${price ? rub(price) : "—"}</b></div><div><span>Оплачено</span><b>${rub(paid)}</b></div><div><span>Остаток</span><b class="${price && paid > price ? "neg" : ""}">${price ? rub(price - paid) : "—"}</b></div></div>
+    <div class="kv"><div><span>${items.length ? "Всего" : "По договору"}</span><b>${price ? esc(rubV(v)) : "—"}</b></div><div><span>Оплачено</span><b>${rub(paid)}</b></div><div><span>Остаток</span><b class="${price && paid > price ? "neg" : ""}">${price ? (apx ? "≈ " : "") + rub(price - paid) : "—"}</b></div></div>
     ${price ? barHTML(paid, plan, price) : ""}
+    ${apx ? `<p class="mini" style="margin:8px 2px 0">≈ — есть примерные суммы (${rub(vApproxSum(v))}), уточните их, когда станут известны.</p>` : ""}
+    <h2 style="margin-top:16px">Состав стоимости</h2>
+    <div class="card list">${items.map(i => itemRow(v, i)).join("")}<button class="row addrow wr" data-additem>${items.length ? "＋ Добавить строку" : "＋ Разбить на части (аренда, еда…)"}</button></div>
     ${info}
     <h2 style="margin-top:16px">Платежи и задатки</h2>
     <div class="card list">${pays.length ? pays.map(p => payRow(p, true)).join("") : `<div class="empty">Платежей пока нет</div>`}</div>
@@ -766,18 +780,72 @@ function showVendor(id) {
   const bg = openSheet(v.name, body);
   const on = (sel, fn) => { const el = bg.querySelector(sel); if (el) el.onclick = fn; };
   on("[data-pay]", () => editPayment(null, id, bg));
+  on("[data-additem]", () => editItem(v, null, bg));
+  bg.querySelectorAll("[data-item]").forEach(b => b.onclick = () => editItem(v, items.find(i => i.id === b.dataset.item), bg));
   on("[data-edit]", () => { closeSheet(bg); editVendor(v); });
   on("[data-choose]", () => { closeSheet(bg); chooseVendor(v); });
   bg.querySelectorAll("[data-st]").forEach(b => b.onclick = async () => { await upd("vendors", v.id, {status: b.dataset.st}); closeSheet(bg); toast(VST[b.dataset.st][0]); });
   on("[data-delv]", async () => { if (await ask(`«${v.name}»${pays.length ? " и все его платежи" : ""} будут удалены.`)) { for (const p of pays) await del("payments", p.id); await del("vendors", v.id); closeSheet(bg); toast("Удалено"); } });
   bg.querySelectorAll("[data-pay-id]").forEach(b => b.onclick = e => { e.stopPropagation(); editPayment(S.payments.find(p => p.id === b.dataset.payId), id, bg); });
 }
+function itemRow(v, i) {
+  const calc = i.mode === "guest" ? `${rub(i.per)} × ${itemQty(i)} ${plural(itemQty(i), "гость", "гостя", "гостей")}${i.qty === "manual" ? "" : " · " + QTY[i.qty || "active"].toLowerCase()}` : "";
+  const pd = itemPaid(v, i);
+  return `<button class="row" data-item="${esc(i.id)}"><div class="grow"><div class="t">${esc(i.title || "Без названия")}</div><div class="s">${calc ? `<span>${esc(calc)}</span>` : ""}${i.approx ? '<span class="pill s-search">примерно</span>' : '<span class="pill s-contract">точно</span>'}</div></div><div class="r">${i.approx ? "≈ " : ""}${rub(itemSum(i))}${pd ? `<small>оплачено ${rub(pd)}</small>` : ""}</div></button>`;
+}
+function editItem(v, it, vendorSheet) {
+  const first = !vItems(v).length;
+  const qo = Object.entries(QTY).map(([k, l]) => [k, k === "manual" ? l : `${l} (${qtyCount(k)})`]);
+  const fields = [
+    {k: "title", l: "Что это", ph: "Аренда зала, Банкет, Пробковый сбор…"},
+    {k: "mode", l: "Как считать", t: "sel", o: [["sum", "Сумма"], ["guest", "Цена за гостя × количество гостей"]]},
+    {k: "amount", l: "Сумма, ₽", t: "num", ph: "0"},
+    {k: "per", l: "Цена за гостя, ₽", t: "num", ph: "0"},
+    {k: "qty", l: "Сколько гостей", t: "sel", o: qo},
+    {k: "n", l: "Количество гостей", t: "num", ph: "0"},
+    {k: "approx", l: "Примерно — сумма ещё уточнится", t: "check"}
+  ];
+  const vals = it ? {...it} : {mode: "sum", qty: "active", approx: false, amount: first && +v.price ? +v.price : "", n: qtyCount("active") || ""};
+  const bg = openForm({title: it ? "Строка стоимости" : "Новая строка", fields, required: "title", vals,
+    before: `<p class="mini" style="margin:-6px 0 12px">${esc(v.name)}${first && +v.price ? ` · сейчас стоимость ${rub(v.price)}; после добавления строк она будет считаться как их сумма` : ""}</p>`,
+    after: `<p class="mini" data-itot style="margin:2px 2px 12px;font-size:15px"></p>`,
+    onSave: async d => {
+      const item = {id: it ? it.id : uid(), title: d.title, mode: d.mode, approx: !!d.approx};
+      if (d.mode === "guest") { item.per = d.per; item.qty = d.qty; if (d.qty === "manual") item.n = Math.round(d.n); } else item.amount = d.amount;
+      const items = it ? vItems(v).map(x => x.id === it.id ? item : x) : [...vItems(v), item];
+      await saveItems(v, items);
+      if (vendorSheet) { closeSheet(vendorSheet); reopenVendor(v.id); }
+    },
+    onDelete: it ? async () => {
+      for (const p of S.payments.filter(p => p.vendorId === v.id && p.itemId === it.id)) await upd("payments", p.id, {itemId: ""});
+      await saveItems(v, vItems(v).filter(x => x.id !== it.id));
+      if (vendorSheet) { closeSheet(vendorSheet); reopenVendor(v.id); }
+    } : null});
+  const form = bg.querySelector("form"), fe = k => form.querySelector(`[name="${k}"]`), box = k => fe(k).closest(".f");
+  const upd2 = () => {
+    const g = fe("mode").value === "guest", man = fe("qty").value === "manual";
+    box("amount").style.display = g ? "none" : ""; box("per").style.display = g ? "" : "none"; box("qty").style.display = g ? "" : "none"; box("n").style.display = g && man ? "" : "none";
+    const q = man ? Math.round(num(fe("n").value)) : qtyCount(fe("qty").value);
+    const tot = g ? num(fe("per").value) * q : num(fe("amount").value), ap = fe("approx").checked;
+    form.querySelector("[data-itot]").innerHTML = `Итого по строке: <b>${ap ? "≈ " : ""}${esc(rub(tot))}</b>${g ? ` <span style="color:var(--muted)">(${esc(rub(num(fe("per").value)))} × ${q})</span>` : ""}`;
+  };
+  form.addEventListener("input", upd2); form.addEventListener("change", upd2); upd2();
+}
+async function saveItems(v, items) {
+  const nv = {...v, items};
+  const price = vPrice(nv), paid = vPaid(v);
+  const patch = {items, price};
+  if (v.status === "paid" && (vApprox(nv) || paid < price)) patch.status = "contract";
+  else if (v.status === "contract" && price && paid >= price && !vApprox(nv)) patch.status = "paid";
+  await upd("vendors", v.id, patch);
+}
 function payRow(p, inVendor) {
   const v = vendorById(p.vendorId), late = p.status !== "paid" && p.date && parseD(p.date) < today0();
   const sub = [PTYPE[p.type] || "Платёж", PMETH[p.method], p.date ? (p.status === "paid" ? "" : "до ") + fmtShort(p.date) : ""].filter(Boolean).map(esc).join(" · ");
-  return `<button class="row" ${inVendor ? `data-pay-id="${esc(p.id)}"` : `data-payment="${esc(p.id)}"`}><div class="grow"><div class="t">${inVendor ? esc(PTYPE[p.type] || "Платёж") : esc(v ? v.name : "Подрядчик удалён")}</div><div class="s">${inVendor ? esc([PMETH[p.method], p.date ? fmtD(p.date) : "", p.note, p.by === "p1" || p.by === "p2" ? "внёс(ла) " + who(p.by) : ""].filter(Boolean).join(" · ")) : sub}</div></div><div class="r">${rub(p.amount)}<small>${p.status === "paid" ? '<span class="pill s-paid">оплачено</span>' : late ? '<span class="pill s-late">просрочено</span>' : '<span class="pill s-search">план</span>'}</small></div></button>`;
+  return `<button class="row" ${inVendor ? `data-pay-id="${esc(p.id)}"` : `data-payment="${esc(p.id)}"`}><div class="grow"><div class="t">${inVendor ? esc(PTYPE[p.type] || "Платёж") : esc(v ? v.name : "Подрядчик удалён")}</div><div class="s">${inVendor ? esc([vItems(v).find(i => i.id === p.itemId)?.title, PMETH[p.method], p.date ? fmtD(p.date) : "", p.note, p.by === "p1" || p.by === "p2" ? "внёс(ла) " + who(p.by) : ""].filter(Boolean).join(" · ")) : sub}</div></div><div class="r">${rub(p.amount)}<small>${p.status === "paid" ? '<span class="pill s-paid">оплачено</span>' : late ? '<span class="pill s-late">просрочено</span>' : '<span class="pill s-search">план</span>'}</small></div></button>`;
 }
-const payFields = () => [
+const payFields = v => [
+  ...(vItems(v).length ? [{k: "itemId", l: "За что", t: "sel", o: [["", "Общий платёж"], ...vItems(v).map(i => [i.id, i.title || "Без названия"])]}] : []),
   {k: "amount", l: "Сумма, ₽", t: "num", ph: "0", half: true},
   {k: "status", l: "Статус", t: "sel", o: [["paid", "Оплачено"], ["planned", "Запланировано"]], half: true},
   {k: "type", l: "Тип", t: "sel", o: Object.entries(PTYPE), half: true},
@@ -787,8 +855,8 @@ const payFields = () => [
 ];
 function editPayment(p, vendorId, vendorSheet) {
   const v = vendorById(vendorId || p?.vendorId);
-  const rest = v ? Math.max(0, (+v.price || 0) - vPaid(v) - vPlanned(v)) : 0;
-  openForm({title: p ? "Платёж" : "Новый платёж", fields: payFields(), before: v ? `<p class="mini" style="margin:-6px 0 12px">${esc(v.name)}${!p && rest ? " · не распределено " + rub(rest) : ""}</p>` : "",
+  const rest = v ? Math.max(0, vPrice(v) - vPaid(v) - vPlanned(v)) : 0;
+  openForm({title: p ? "Платёж" : "Новый платёж", fields: payFields(v), before: v ? `<p class="mini" style="margin:-6px 0 12px">${esc(v.name)}${!p && rest ? " · не распределено " + rub(rest) : ""}</p>` : "",
     vals: p || {status: "paid", type: vPaid(v || {}) ? "extra" : "deposit", method: "transfer", date: iso(new Date()), amount: rest || ""},
     onSave: async d => {
       if (!d.amount) throw toast("Укажите сумму");
@@ -796,9 +864,9 @@ function editPayment(p, vendorId, vendorSheet) {
       if (p) await upd("payments", p.id, d); else await add("payments", {...d, vendorId: v.id});
       if (v) { // auto status
         const paid = others + (d.status === "paid" ? d.amount : 0);
-        const price = +v.price || 0;
+        const price = vPrice(v);
         let ns = v.status;
-        if (price && paid >= price) ns = "paid"; else if (paid > 0 && (v.status === "search" || v.status === "talks" || v.status === "paid")) ns = "contract";
+        if (price && paid >= price && !vApprox(v)) ns = "paid"; else if (paid > 0 && (v.status === "search" || v.status === "talks" || v.status === "paid")) ns = "contract";
         if (ns !== v.status) await upd("vendors", v.id, {status: ns});
       }
       if (vendorSheet) { closeSheet(vendorSheet); reopenVendor(v.id); }
@@ -820,12 +888,12 @@ function vBudget() {
     <div class="legend"><span><i style="background:var(--accent)"></i>Оплачено ${rub(T.paid)}</span><span><i style="background:var(--accent2);opacity:.55"></i>К оплате ${rub(T.toPay)}</span>${T.budget ? `<span class="${T.free < 0 ? "neg" : ""}"><i style="background:var(--soft);border:1px solid var(--line)"></i>${T.free < 0 ? "Перерасход " + rub(-T.free) : "Свободно " + rub(T.free)}</span>` : ""}</div>
   </div>
   <div class="stats" style="margin-top:10px">
-    <div class="stat"><div class="v">${rub(T.contract)}</div><div class="l">по договорам и покупкам</div></div>
+    <div class="stat"><div class="v">${rub(T.contract)}</div><div class="l">по договорам и покупкам${T.approx ? `<br>в т.ч. ≈ ${rub(T.approx)} примерно` : ""}</div></div>
     <div class="stat"><div class="v ${T.budget && T.planned > T.budget ? "neg" : ""}">${rub(T.planned)}</div><div class="l">распределено по плану</div></div>
   </div>
   <div class="cols"><div>
   <h2>План и факт по категориям</h2>
-  <div class="card list">${cats().map(c => { const x = catStats(c); const over = x.planned && x.contract > x.planned; return swipe("categories", c.id, `<button class="row" data-cat="${esc(c.id)}"><div class="grow"><div class="t">${esc(c.emoji || "")} ${esc(c.name)}</div><div style="margin-top:7px">${x.planned || x.contract ? `<div class="bar"><i class="${over ? "over" : "b1"}" style="width:${Math.min(100, x.paid / Math.max(x.planned, x.contract, 1) * 100)}%"></i><i class="b2" style="width:${Math.max(0, (x.contract - x.paid) / Math.max(x.planned, x.contract, 1) * 100)}%"></i></div>` : ""}</div><div class="s" style="margin-top:5px">план ${rub(x.planned)} · факт <span class="${over ? "neg" : ""}">${rub(x.contract)}</span></div></div><div class="r">${rub(x.paid)}<small>оплачено</small></div></button>`); }).join("") || '<div class="empty">Категорий нет</div>'}<button class="row addrow wr" data-act="category">＋ Добавить категорию</button></div>
+  <div class="card list">${cats().map(c => { const x = catStats(c); const over = x.planned && x.contract > x.planned; return swipe("categories", c.id, `<button class="row" data-cat="${esc(c.id)}"><div class="grow"><div class="t">${esc(c.emoji || "")} ${esc(c.name)}</div><div style="margin-top:7px">${x.planned || x.contract ? `<div class="bar"><i class="${over ? "over" : "b1"}" style="width:${Math.min(100, x.paid / Math.max(x.planned, x.contract, 1) * 100)}%"></i><i class="b2" style="width:${Math.max(0, (x.contract - x.paid) / Math.max(x.planned, x.contract, 1) * 100)}%"></i></div>` : ""}</div><div class="s" style="margin-top:5px">план ${rub(x.planned)} · факт <span class="${over ? "neg" : ""}">${x.approx ? "≈ " : ""}${rub(x.contract)}</span></div></div><div class="r">${rub(x.paid)}<small>оплачено</small></div></button>`); }).join("") || '<div class="empty">Категорий нет</div>'}<button class="row addrow wr" data-act="category">＋ Добавить категорию</button></div>
   <h2>Расходы ${S.expenses.length ? `<span style="text-transform:none;letter-spacing:0">${rub(sum(S.expenses, e => e.amount))}</span>` : ""}</h2>
   <div class="card list">${S.expenses.length ? [...S.expenses].sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || 0) - (a.createdAt || 0)).map(expenseRow).join("") : '<div class="empty">Мелкие траты — платье, макияж, такси, кольца… Добавляйте кнопкой «+».</div>'}<button class="row addrow wr" data-act="expense">＋ Добавить расход</button></div>
   </div><div>
@@ -1271,8 +1339,8 @@ function showCategory(c) {
   const x = catStats(c);
   const vs = S.vendors.filter(v => v.catId === c.id && v.status !== "rejected"), ps = S.purchases.filter(p => p.catId === c.id), es = S.expenses.filter(e => e.catId === c.id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
   const bg = openSheet((c.emoji ? c.emoji + " " : "") + c.name, `
-    <div class="kv"><div><span>План</span><b>${rub(x.planned)}</b></div><div><span>Факт</span><b class="${x.planned && x.contract > x.planned ? "neg" : ""}">${rub(x.contract)}</b></div><div><span>Оплачено</span><b>${rub(x.paid)}</b></div></div>
-    ${vs.length ? `<h2>Подрядчики</h2><div class="card list">${vs.map(v => `<div class="row"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}</div></div><div class="r">${+v.price ? rub(v.price) : "—"}${isSel(v) ? `<small>оплачено ${rub(vPaid(v))}</small>` : ""}</div></div>`).join("")}</div>` : ""}
+    <div class="kv"><div><span>План</span><b>${rub(x.planned)}</b></div><div><span>Факт</span><b class="${x.planned && x.contract > x.planned ? "neg" : ""}">${x.approx ? "≈ " : ""}${rub(x.contract)}</b></div><div><span>Оплачено</span><b>${rub(x.paid)}</b></div></div>
+    ${vs.length ? `<h2>Подрядчики</h2><div class="card list">${vs.map(v => `<div class="row"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}</div></div><div class="r">${vPrice(v) ? rubV(v) : "—"}${isSel(v) ? `<small>оплачено ${rub(vPaid(v))}</small>` : ""}</div></div>`).join("")}</div>` : ""}
     ${ps.length ? `<h2>Покупки</h2><div class="card list">${ps.map(p => `<div class="row"><div class="grow"><div class="t">${esc(p.title)}</div><div class="s">${pill(PUR, p.status)}</div></div><div class="r">${+p.price ? rub(p.price) : "—"}</div></div>`).join("")}</div>` : ""}
     <h2>Расходы</h2><div class="card list">${es.length ? es.map(e => `<div class="row"><div class="grow"><div class="t">${esc(e.title || "Расход")}${e.hasReceipt ? " 🧾" : ""}</div><div class="s">${esc([e.date ? fmtShort(e.date) : "", PAYER[e.payer] ? PAYER[e.payer]() : ""].filter(Boolean).join(" · "))}</div></div><div class="r">${rub(e.amount)}</div></div>`).join("") : '<div class="empty">Расходов пока нет</div>'}</div>
     <div class="wr"><button class="btn pri w" data-addexp style="margin-top:14px">＋ Расход в эту категорию</button>
@@ -1448,7 +1516,9 @@ async function exportXlsx() {
   const T = totals(), wb = XLSX.utils.book_new();
   const sheet = (name, rows, widths) => { const ws = XLSX.utils.aoa_to_sheet(rows); if (widths) ws["!cols"] = widths.map(w => ({wch: w})); XLSX.utils.book_append_sheet(wb, ws, name); };
   sheet("Бюджет", [["Категория", "План, ₽", "По договорам, ₽", "Оплачено, ₽", "Осталось оплатить, ₽"], ...cats().map(c => { const x = catStats(c); return [c.name, x.planned, x.contract, x.paid, x.contract - x.paid]; }), [], ["Итого", T.planned, T.contract, T.paid, T.toPay], ["Общий бюджет", T.budget], ["Свободно", T.free]], [26, 12, 16, 14, 18]);
-  sheet("Подрядчики", [["Категория", "Подрядчик", "Статус", "Стоимость, ₽", "Оплачено, ₽", "Остаток, ₽", "Контакт", "Телефон", "Ссылка", "Договор", "Заметки"], ...S.vendors.map(v => [catById(v.catId)?.name || "", v.name, VST[v.status]?.[0] || "", +v.price || 0, vPaid(v), (+v.price || 0) - vPaid(v), v.contact || "", v.phone || "", v.link || "", v.contract || "", v.notes || ""])], [20, 24, 12, 13, 13, 13, 16, 16, 24, 24, 30]);
+  sheet("Подрядчики", [["Категория", "Подрядчик", "Статус", "Стоимость, ₽", "Из них примерно, ₽", "Оплачено, ₽", "Остаток, ₽", "Контакт", "Телефон", "Ссылка", "Договор", "Заметки"], ...S.vendors.map(v => [catById(v.catId)?.name || "", v.name, VST[v.status]?.[0] || "", vPrice(v), vApproxSum(v), vPaid(v), vPrice(v) - vPaid(v), v.contact || "", v.phone || "", v.link || "", v.contract || "", v.notes || ""])], [20, 24, 12, 13, 13, 13, 13, 16, 16, 24, 24, 30]);
+  const itRows = S.vendors.flatMap(v => vItems(v).map(i => [v.name, i.title || "", i.mode === "guest" ? `${+i.per || 0} ₽ × ${itemQty(i)} гост. (${QTY[i.qty || "active"]})` : "Сумма", itemSum(i), i.approx ? "Примерно" : "Точно", itemPaid(v, i)]));
+  if (itRows.length) sheet("Состав стоимости", [["Подрядчик", "Строка", "Расчёт", "Сумма, ₽", "Точность", "Оплачено по строке, ₽"], ...itRows], [24, 22, 34, 13, 11, 16]);
   sheet("Платежи", [["Дата", "Подрядчик", "Тип", "Способ", "Сумма, ₽", "Статус", "Комментарий"], ...[...S.payments].sort((a, b) => (a.date || "") < (b.date || "") ? -1 : 1).map(p => [p.date || "", vendorById(p.vendorId)?.name || "", PTYPE[p.type] || "", PMETH[p.method] || "", +p.amount || 0, p.status === "paid" ? "Оплачено" : "Запланировано", p.note || ""])], [12, 24, 14, 14, 12, 14, 30]);
   sheet("Тайминг", [["Время", "Что", "Где", "Кто отвечает", "Заметка"], ...schedSorted().map(x => [x.time || "", x.title, x.place || "", x.who || "", x.note || ""])], [8, 36, 20, 26, 30]);
   sheet("Расходы", [["Дата", "На что", "Категория", "Сумма, ₽", "Кто платил", "Способ", "Чек", "Заметка"], ...[...S.expenses].sort((a, b) => (a.date || "").localeCompare(b.date || "")).map(x => [x.date || "", x.title || "", catById(x.catId)?.name || "", +x.amount || 0, PAYER[x.payer] ? PAYER[x.payer]() : "", PMETH[x.method] || "", x.hasReceipt ? "есть" : "", x.note || ""])], [12, 28, 20, 12, 12, 14, 6, 30]);
