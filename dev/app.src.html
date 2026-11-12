@@ -1,0 +1,1556 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Свадьба">
+<meta name="theme-color" content="#faf7f2" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#141210" media="(prefers-color-scheme: dark)">
+<title>Свадебный планер</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Manrope:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="icons/favicon-32.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<script src="config.js"></script>
+<script src="vendor/supabase.js"></script>
+<script src="vendor/xlsx.full.min.js" defer></script>
+<style>
+:root{--bg:#faf7f2;--card:#fff;--ink:#2a2420;--muted:#8c8178;--line:#ece4da;--soft:#f3ede4;--accent:#7f9172;--accent2:#b8945a;--rose:#c98b8b;--danger:#c0564b;--ok:#5f8f5a;--shadow:0 1px 2px rgba(60,40,20,.05),0 4px 16px rgba(60,40,20,.05)}
+@media (prefers-color-scheme:dark){:root{--bg:#141210;--card:#1e1b18;--ink:#f1ebe3;--muted:#9c9187;--line:#2f2a25;--soft:#27231f;--accent:#9db08e;--accent2:#d0ad74;--rose:#d79c9c;--danger:#e0756a;--ok:#86b880;--shadow:none}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;background:var(--bg);color:var(--ink)}
+body{font:15px/1.45 Manrope,-apple-system,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none;padding:0}
+a{color:var(--accent)}
+#app{max-width:600px;margin:0 auto;padding:calc(env(safe-area-inset-top) + 14px) 16px calc(96px + env(safe-area-inset-bottom))}
+.serif{font-family:"Cormorant Garamond",Georgia,serif}
+h1.ttl{font-family:"Cormorant Garamond",Georgia,serif;font-weight:600;font-size:34px;line-height:1.1;margin:6px 0 14px;display:flex;align-items:center;gap:10px}
+h1.ttl .back{font:500 15px Manrope,sans-serif;color:var(--accent)}
+h2{font:600 13px Manrope,sans-serif;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:22px 4px 8px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+h2 .lnk{text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600}
+.card{background:var(--card);border-radius:18px;box-shadow:var(--shadow);border:1px solid var(--line);overflow:hidden}
+.pad{padding:16px}
+.list>.row:not(:last-child){border-bottom:1px solid var(--line)}
+.row{display:flex;align-items:center;gap:12px;padding:13px 16px;width:100%;text-align:left}
+.row .grow{flex:1;min-width:0}
+.row .t{font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:13px;color:var(--muted);margin-top:2px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.row .r{text-align:right;font-weight:600;white-space:nowrap}
+.row .r small{display:block;font-weight:500;color:var(--muted);font-size:12px}
+.row.ghost .t{color:var(--muted);font-weight:500}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px;white-space:nowrap;background:var(--soft);color:var(--muted)}
+.s-search{background:#f1e9dc;color:#9a7a45}.s-talks{background:#e7ecf3;color:#5a7090}.s-contract{background:#e9efe3;color:#5d7a4f}.s-paid{background:#5f8f5a;color:#fff}.s-no{background:#f5e3e1;color:#b0564b}.s-none{background:var(--soft);color:var(--muted)}.s-late{background:#f5e3e1;color:#b0564b}.s-now{background:#e9efe3;color:#5d7a4f}
+@media (prefers-color-scheme:dark){.s-search{background:#3a3124;color:#d6b57c}.s-talks{background:#25303d;color:#9fb6d6}.s-contract{background:#2a3525;color:#a9c69a}.s-paid{background:#4d7a48}.s-no,.s-late{background:#3d2624;color:#e6928a}.s-now{background:#2a3525;color:#a9c69a}}
+.bar{height:8px;border-radius:99px;background:var(--soft);overflow:hidden;display:flex}
+.bar i{display:block;height:100%}
+.bar .b1{background:var(--accent)}.bar .b2{background:var(--accent2);opacity:.55}.bar .over{background:var(--danger)}
+.chips{display:flex;gap:8px;overflow-x:auto;padding:2px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;padding:7px 13px;border-radius:99px;background:var(--card);border:1px solid var(--line);font-size:13px;font-weight:600;color:var(--muted)}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip b{font-weight:700;opacity:.7;margin-left:4px}
+.hero{text-align:center;padding:26px 16px 22px;background:linear-gradient(160deg,var(--card),var(--soft));border-radius:24px;border:1px solid var(--line);margin-top:4px}
+.hero .names{font:600 36px/1.05 "Cormorant Garamond",Georgia,serif}
+.hero .names span{color:var(--accent2);font-style:italic;margin:0 4px}
+.hero .date{color:var(--muted);margin-top:6px;font-size:14px}
+.hero .count{margin-top:14px;font:600 64px/1 "Cormorant Garamond",Georgia,serif;color:var(--accent)}
+.hero .count small{display:block;font:600 12px Manrope,sans-serif;letter-spacing:.12em;text-transform:uppercase;color:var(--muted);margin-top:6px}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.stats.s4{grid-template-columns:repeat(4,1fr)}
+.stat{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px;box-shadow:var(--shadow)}
+.stat .v{font-weight:700;font-size:17px;white-space:nowrap}
+.stat .l{font-size:12px;color:var(--muted)}
+.stats.s4 .stat{padding:10px 6px;text-align:center}.stats.s4 .v{font-size:19px}
+.big{font:600 34px/1.1 "Cormorant Garamond",Georgia,serif}
+.legend{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--muted);margin-top:10px}
+.legend i{display:inline-block;width:9px;height:9px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.ck{width:24px;height:24px;border-radius:50%;border:2px solid var(--line);flex:none;display:grid;place-items:center;transition:.15s}
+.ck.on{background:var(--accent);border-color:var(--accent)}
+.ck.on::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.5px 2.5px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.done .t{text-decoration:line-through;color:var(--muted);font-weight:500}
+.fab{position:fixed;right:max(18px,calc(50% - 282px));bottom:calc(84px + env(safe-area-inset-bottom));width:56px;height:56px;border-radius:50%;background:var(--ink);color:var(--bg);font-size:30px;line-height:56px;text-align:center;box-shadow:0 6px 20px rgba(0,0,0,.2);z-index:20}
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:30;background:color-mix(in srgb,var(--card) 88%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom)}
+.tabbar .in{max-width:600px;margin:0 auto;display:flex}
+.tabbar button{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 0 7px;font-size:11px;font-weight:600;color:var(--muted)}
+.tabbar button.on{color:var(--accent)}
+.tabbar svg{width:24px;height:24px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:12px 18px;border-radius:14px;font-weight:700;background:var(--soft);color:var(--ink)}
+.btn.pri{background:var(--ink);color:var(--bg)}
+.btn.acc{background:var(--accent);color:#fff}
+.btn.danger{color:var(--danger)}
+.btn.w{width:100%}
+.btn:disabled{opacity:.5}
+.btnrow{display:flex;gap:10px;margin-top:14px}.btnrow .btn{flex:1}
+.banner{background:var(--soft);border:1px solid var(--line);border-radius:14px;padding:10px 14px;font-size:13px;color:var(--muted);margin-bottom:12px}
+.empty{text-align:center;color:var(--muted);padding:26px 16px;font-size:14px}
+.sheet-bg{position:fixed;inset:0;background:rgba(20,15,10,.38);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fade .18s}
+.sheet{background:var(--bg);width:100%;max-width:600px;max-height:92vh;overflow-y:auto;border-radius:22px 22px 0 0;padding:8px 18px calc(22px + env(safe-area-inset-bottom));animation:up .22s cubic-bezier(.2,.8,.2,1)}
+.sheet .grab{width:38px;height:5px;border-radius:9px;background:var(--line);margin:4px auto 10px}
+.sheet .sh{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.sheet .sh h3{margin:0;font:600 26px/1.15 "Cormorant Garamond",Georgia,serif}
+.sheet .x{width:32px;height:32px;border-radius:50%;background:var(--soft);font-size:18px;color:var(--muted);flex:none}
+.modal{z-index:60;align-items:center}
+.modal .sheet{border-radius:20px;max-width:340px;margin:16px;animation:pop .18s}
+@keyframes fade{from{opacity:0}}@keyframes up{from{transform:translateY(40px);opacity:.4}}@keyframes pop{from{transform:scale(.94);opacity:0}}
+.f{margin-bottom:12px}
+.f label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin:0 0 5px 4px}
+.f input,.f select,.f textarea{width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 13px;font-size:16px;outline:none;-webkit-appearance:none;appearance:none}
+.f select{background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 18px) 52%,calc(100% - 13px) 52%;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+.f input:focus,.f select:focus,.f textarea:focus{border-color:var(--accent)}
+.f textarea{min-height:84px;resize:vertical}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 14px;background:var(--card);border:1px solid var(--line);border-radius:12px;margin-bottom:8px;font-weight:500}
+.tog input{width:22px;height:22px;accent-color:var(--accent);flex:none}
+.kv{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:4px 0 14px}
+.kv div{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
+.kv b{display:block;font-size:15px;white-space:nowrap}
+.kv span{font-size:12px;color:var(--muted)}
+.info{font-size:14px;margin:4px 0}
+.info span{color:var(--muted)}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom));background:var(--ink);color:var(--bg);padding:11px 18px;border-radius:14px;font-size:14px;font-weight:600;z-index:80;max-width:90vw;text-align:center;animation:pop .2s}
+.tables{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.tbl{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:12px;box-shadow:var(--shadow)}
+.tbl .tn{display:flex;justify-content:space-between;align-items:center;font-weight:700;width:100%;text-align:left}
+.tbl .tn small{font-weight:600;color:var(--muted)}
+.tbl svg{display:block;margin:6px auto;width:96px;height:96px}
+.gch{display:inline-block;font-size:12px;font-weight:600;background:var(--soft);border-radius:99px;padding:4px 10px;margin:3px 3px 0 0}
+.gch.u{background:var(--card);border:1px dashed var(--muted)}
+.menu .row svg{width:22px;height:22px;color:var(--accent);flex:none}
+.chev{color:var(--muted);font-size:18px}
+.skel{height:120px;border-radius:18px;background:var(--soft);margin-bottom:12px;animation:pulse 1.2s infinite alternate}
+@keyframes pulse{to{opacity:.5}}
+.prog{position:fixed;inset:0;background:var(--bg);z-index:90;display:grid;place-items:center;text-align:center;padding:30px}
+.ob h1{font:600 40px/1.05 "Cormorant Garamond",Georgia,serif;margin:18px 0 6px}
+.ob p{color:var(--muted);margin:0 0 18px}
+.search{width:100%;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:11px 13px;font-size:16px;outline:none;margin-bottom:10px}
+.mini{font-size:12px;color:var(--muted)}
+.neg{color:var(--danger)}
+.ro .fab,.ro .wr{display:none!important}
+.sw{position:relative;overflow:hidden}
+.list>.sw:not(:last-child){border-bottom:1px solid var(--line)}
+.list>.sw>.swc>.row{border-bottom:0}
+.swa{position:absolute;inset:0 0 0 auto;width:92px;display:flex}
+.swa button{flex:1;background:var(--danger);color:#fff;font-weight:700;font-size:14px}
+.swc{position:relative;background:var(--card);transition:transform .22s cubic-bezier(.2,.8,.2,1);touch-action:pan-y}
+.addrow{justify-content:center;font-weight:700;color:var(--accent);padding:16px;font-size:16px;border-top:1px solid var(--line)}
+.amt{display:flex;align-items:baseline;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 16px;margin-bottom:14px}
+.amt input{flex:1;min-width:0;border:0;background:none;outline:none;font:600 40px/1.1 "Cormorant Garamond",Georgia,serif;color:var(--ink)}
+.amt span{font:600 28px "Cormorant Garamond",Georgia,serif;color:var(--muted)}
+.ecats{flex-wrap:wrap;margin:0;padding:0;overflow:visible}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;padding:10px 6px;border-radius:9px;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.rcpt{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.rprev{position:relative}.rprev img{display:block;max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--line)}
+.rprev .x{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff}
+.mbgrid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.mbcard{background:var(--card);border:1px solid var(--line);border-radius:18px;overflow:hidden;text-align:left;box-shadow:var(--shadow);display:flex;flex-direction:column}
+.mbcov{height:110px;display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:2px;background:var(--soft)}
+.mbcov img,.mbcov i{width:100%;height:110px;object-fit:cover;display:block;background:var(--soft)}
+.mbcov span{display:grid;place-items:center;font-size:38px;height:110px}
+.mbinfo{padding:10px 12px 12px}.mbinfo .t{font-weight:700;font-size:14px}.mbinfo .s{font-size:12px;color:var(--muted);margin-top:2px}
+.mbphotos{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.mbph{position:relative;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--soft);border:1px solid var(--line);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:0;text-align:center}
+.mbph img{width:100%;height:100%;object-fit:cover}
+.mbph small{position:absolute;left:0;right:0;bottom:0;background:linear-gradient(transparent,rgba(0,0,0,.65));color:#fff;font-size:11px;padding:14px 6px 5px;text-align:left;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mblink span{font-size:26px}.mblink b{font-size:12px;padding:0 6px;word-break:break-all}.mblink small{position:static;background:none;color:var(--muted);white-space:normal}
+.mbadd{font-size:26px;color:var(--accent);border-style:dashed;cursor:pointer;background:var(--card)}.mbadd span{font-size:12px;font-weight:700}
+.mbfull img{display:block;width:100%;border-radius:14px}
+.tl .tm{font:700 17px Manrope,sans-serif;color:var(--accent);min-width:56px;align-self:flex-start;padding-top:1px}
+.cm .t{font-size:15px}
+@media (min-width:900px){.mbgrid{grid-template-columns:repeat(auto-fill,minmax(250px,1fr))}.mbphotos{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}.mbcov,.mbcov img,.mbcov i,.mbcov span{height:150px}}
+.money{position:relative}
+.f .money input{padding-right:36px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:.01em}
+.money span{position:absolute;right:14px;top:50%;transform:translateY(-50%);color:var(--muted);font-weight:600;pointer-events:none}
+.amt input{font-variant-numeric:tabular-nums}
+.dx{display:none!important}
+@media (hover:hover){.row:hover{background:var(--soft)}button.row,.chip,.btn,.tabbar button{transition:background .12s}}
+@media (min-width:900px){
+  body{font-size:15px}
+  .dx{display:flex!important}
+  .mo{display:none!important}
+  #app{max-width:1180px;margin:0 0 0 250px;padding:28px 40px 60px}
+  .tabbar{top:0;bottom:0;left:0;right:auto;width:250px;border-top:0;border-right:1px solid var(--line);padding:0;background:var(--card)}
+  .tabbar .in{flex-direction:column;align-items:stretch;height:100%;padding:22px 14px;gap:2px;overflow-y:auto}
+  .tabbar button{flex:none;flex-direction:row;justify-content:flex-start;gap:12px;padding:10px 12px;border-radius:12px;font-size:14px;color:var(--ink);font-weight:600}
+  .tabbar button svg{width:20px;height:20px;color:var(--muted)}
+  .tabbar button.on{background:var(--soft);color:var(--ink)}
+  .tabbar button.on svg{color:var(--accent)}
+  .tabbar .brand{flex-direction:column;padding:4px 12px 18px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+  .tabbar .bn{font:600 26px/1.1 "Cormorant Garamond",Georgia,serif}
+  .tabbar .bn span{color:var(--accent2);font-style:italic}
+  .tabbar .bd{font-size:12px;color:var(--muted);margin-top:4px}
+  .tabbar .sep{height:1px;background:var(--line);margin:10px 4px}
+  .tabbar .sidefoot{margin-top:auto;padding:12px;font-size:12px;color:var(--muted);flex-direction:column;word-break:break-all}
+  h1.ttl{font-size:40px;margin-top:0}
+  .hero{display:grid;grid-template-columns:1fr auto;align-items:center;text-align:left;padding:30px 36px}
+  .hero .names{font-size:46px}.hero .count{margin:0;text-align:right;font-size:76px}
+  .hero .date{grid-column:1;grid-row:2;margin-top:4px}.hero .count{grid-column:2;grid-row:1/span 2}
+  .cols{display:grid;grid-template-columns:1fr 1fr;gap:0 28px;align-items:start}
+  .catgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 24px;align-items:start}
+  .stats.s4d{grid-template-columns:repeat(4,1fr)}
+  .tables{grid-template-columns:repeat(auto-fill,minmax(210px,1fr))}
+  .chips{margin:0;padding-left:0;padding-right:0;flex-wrap:wrap;overflow:visible}
+  .fab{right:40px;bottom:36px}
+  .sheet-bg{align-items:center}
+  .sheet{max-width:600px;border-radius:22px;max-height:88vh;padding:14px 26px 26px;margin:20px;box-shadow:0 20px 60px rgba(0,0,0,.25)}
+  .sheet .grab{display:none}
+  .toast{bottom:40px;left:calc(50% + 125px)}
+  body.noside #app{margin:0 auto;max-width:560px}
+  .ob,.join,.auth,.recover{max-width:480px;margin-left:auto!important;margin-right:auto!important}
+  .banner{max-width:none}
+}
+@media (min-width:1400px){.catgrid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+</style>
+</head>
+<body>
+<div id="app"></div>
+<nav class="tabbar" id="tabbar"></nav>
+<script>
+"use strict";
+const TPL = /*TPL*/null;
+const PER = TPL.periods;
+const VST = {search:["Смотрим","s-search"],talks:["Переговоры","s-talks"],contract:["Договор","s-contract"],paid:["Оплачено","s-paid"],rejected:["Отказались","s-no"]};
+const PTYPE = {deposit:"Задаток",prepay:"Предоплата",extra:"Доплата",full:"Полная оплата"};
+const PMETH = {cash:"Наличные",transfer:"Перевод",card:"Карта",invoice:"Счёт ИП/ООО"};
+const PUR = {need:["Купить","s-search"],ordered:["Заказано","s-talks"],bought:["Куплено","s-paid"]};
+const RSVP = {list:["В списке","s-none"],invited:["Приглашён","s-talks"],yes:["Придёт","s-paid"],no:["Не придёт","s-no"]};
+const GROUPS = ["Семья","Друзья","Коллеги","Другое"];
+const COLLS = ["categories","vendors","payments","tasks","purchases","guests","tables","expenses","mbphotos","mbcomments","schedule"];
+const S = {settings:null,categories:[],vendors:[],payments:[],tasks:[],purchases:[],guests:[],tables:[],expenses:[],mbphotos:[],mbcomments:[],schedule:[]};
+const CFG = window.WEDDING_CONFIG || {};
+let sb = null, session = null, W = null, me = null, canWrite = true, phase = "boot", loaded = false, offline = false, outbox = [], members = [], tfTouched = false;
+const ui = {vf:"all", tf:"all", pf:"all", gf:"all", lf:"all", q:""};
+
+/* ---------- utils ---------- */
+const $ = (s, el = document) => el.querySelector(s);
+const $$ = (s, el = document) => [...el.querySelectorAll(s)];
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const num = v => { const n = parseFloat(String(v ?? "").replace(/\s/g, "").replace(",", ".").replace(/[^\d.-]/g, "")); return isFinite(n) ? n : 0; };
+const fmtMoneyStr = v => { let t = String(v ?? "").replace(/[^\d.,]/g, "").replace(".", ","); const i = t.indexOf(","); let a = i < 0 ? t : t.slice(0, i), b = i < 0 ? null : t.slice(i + 1).replace(/,/g, "").slice(0, 2); a = a.replace(/^0+(?=\d)/, "").replace(/\B(?=(\d{3})+(?!\d))/g, " "); return b === null ? a : a + "," + b; };
+function moneyInput(el) {
+  const pos = el.selectionStart ?? el.value.length;
+  const digitsBefore = el.value.slice(0, pos).replace(/[^\d,]/g, "").length;
+  const out = fmtMoneyStr(el.value);
+  if (out === el.value) return;
+  el.value = out;
+  let n = 0, p = 0; while (p < out.length && n < digitsBefore) { if (/[\d,]/.test(out[p])) n++; p++; }
+  try { el.setSelectionRange(p, p); } catch (e) {}
+}
+const rub = n => (Math.round((+n || 0) * 100) / 100).toLocaleString("ru-RU", {maximumFractionDigits: 2}).replace(/,(?=\d{3})/g, " ") + " ₽";
+const sum = (a, f) => a.reduce((s, x) => s + (+f(x) || 0), 0);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const today0 = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const parseD = s => { if (!s) return null; const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); return m ? new Date(+m[1], +m[2]-1, +m[3]) : null; };
+const iso = d => d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0");
+const fmtD = (s, y) => { const d = typeof s === "string" ? parseD(s) : s; if (!d) return ""; const o = {day:"numeric", month:"long"}; if (y || d.getFullYear() !== new Date().getFullYear()) o.year = "numeric"; return d.toLocaleDateString("ru-RU", o).replace(" г.", ""); };
+const fmtShort = s => { const d = typeof s === "string" ? parseD(s) : s; return d ? d.toLocaleDateString("ru-RU", {day:"numeric", month:"short"}).replace(".", "") : ""; };
+const plural = (n, a, b, c) => { n = Math.abs(n) % 100; const n1 = n % 10; if (n > 10 && n < 20) return c; if (n1 > 1 && n1 < 5) return b; if (n1 === 1) return a; return c; };
+const byOrder = (a, b) => (a.order ?? 999) - (b.order ?? 999) || (a.createdAt || 0) - (b.createdAt || 0);
+
+/* ---------- derived ---------- */
+const st = () => S.settings || {};
+const name1 = () => st().p1 || "Жених";
+const name2 = () => st().p2 || "Невеста";
+const who = k => k === "p1" ? name1() : k === "p2" ? name2() : "Вместе";
+const wDate = () => parseD(st().date);
+const daysLeft = () => { const d = wDate(); return d ? Math.round((d - today0()) / 864e5) : null; };
+const cats = () => [...S.categories].sort(byOrder);
+const catById = id => S.categories.find(c => c.id === id);
+const catLabel = id => { const c = catById(id); return c ? (c.emoji ? c.emoji + " " : "") + c.name : "Без категории"; };
+const vendorById = id => S.vendors.find(v => v.id === id);
+const vPaid = v => sum(S.payments.filter(p => p.vendorId === v.id && p.status === "paid"), p => p.amount);
+const vPlanned = v => sum(S.payments.filter(p => p.vendorId === v.id && p.status !== "paid"), p => p.amount);
+const catBooked = cid => S.vendors.some(v => v.catId === cid && (v.status === "contract" || v.status === "paid"));
+function catStats(c) {
+  const vs = S.vendors.filter(v => v.catId === c.id && v.status !== "rejected" && v.status !== "search" && v.status !== "talks"), ps = S.purchases.filter(p => p.catId === c.id), es = S.expenses.filter(e => e.catId === c.id);
+  const spent = sum(es, e => e.amount);
+  const contract = sum(vs, v => v.price) + sum(ps, p => p.price) + spent;
+  const paid = sum(vs, vPaid) + sum(ps.filter(p => p.status === "bought"), p => p.price) + spent;
+  return {contract, paid, planned: +c.planned || 0};
+}
+function totals() {
+  const all = cats().map(catStats);
+  const orphanV = S.vendors.filter(v => !catById(v.catId) && (v.status === "contract" || v.status === "paid")), orphanP = S.purchases.filter(p => !catById(p.catId)), orphanE = S.expenses.filter(e => !catById(e.catId));
+  const contract = sum(all, x => x.contract) + sum(orphanV, v => v.price) + sum(orphanP, p => p.price) + sum(orphanE, e => e.amount);
+  const paid = sum(all, x => x.paid) + sum(orphanV, vPaid) + sum(orphanP.filter(p => p.status === "bought"), p => p.price) + sum(orphanE, e => e.amount);
+  const budget = +st().budget || 0;
+  return {budget, contract, paid, toPay: Math.max(0, contract - paid), free: budget - contract, planned: sum(all, x => x.planned)};
+}
+const perOf = k => PER.find(p => p.key === k) || PER[0];
+function periodNow() { const d = daysLeft(); if (d == null) return null; if (d <= 0) return "day"; const p = PER.find(p => d <= p.from && d > p.to); return p ? p.key : (d > PER[0].from ? "early" : "day"); }
+function taskDue(t) { if (t.due) return parseD(t.due); const d = wDate(); if (!d) return null; const x = new Date(d); x.setDate(x.getDate() - perOf(t.period).to); return x; }
+const autoDone = t => !!(t.auto && t.catId && catBooked(t.catId));
+const isDone = t => !!t.done || autoDone(t);
+function isLate(t) { if (isDone(t)) return false; const d = taskDue(t); return d ? d < today0() : false; }
+
+/* ---------- data layer (Supabase + offline outbox) ---------- */
+function resetS() { S.settings = null; COLLS.forEach(c => S[c] = []); }
+const LSget = (k, d) => { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } };
+const LSset = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
+let cacheT = null;
+function saveCache() { if (!W) return; clearTimeout(cacheT); cacheT = setTimeout(() => LSset("wp-cache-" + W, S), 400); }
+const saveOutbox = () => W && LSset("wp-outbox-" + W, outbox);
+function strip(o) { const r = {}; for (const k in o) { if (k === "id" || o[k] === undefined) continue; r[k] = o[k]; } return r; }
+function applyLocal(op) {
+  if (op.coll === "meta") { if (op.id === "settings") S.settings = op.t === "up" ? {...op.data} : null; return; }
+  const arr = S[op.coll]; if (!arr) return;
+  if (op.t === "up") { const item = {...op.data, id: op.id}; S[op.coll] = arr.some(x => x.id === op.id) ? arr.map(x => x.id === op.id ? item : x) : [...arr, item]; }
+  else S[op.coll] = arr.filter(x => x.id !== op.id);
+}
+function queue(op) { applyLocal(op); outbox.push(op); saveOutbox(); saveCache(); schedule(); flush(); }
+const isNet = e => !navigator.onLine || /fetch|network|timeout|load failed|offline/i.test(String(e && (e.message || e)));
+let flushing = false;
+async function flush() {
+  if (flushing || !sb || !W || !outbox.length) return;
+  flushing = true;
+  try {
+    while (outbox.length) {
+      const op = outbox[0];
+      let n = 1, res;
+      if (op.t === "up") {
+        while (n < outbox.length && n < 200 && outbox[n].t === "up" && !outbox.slice(0, n).some(o => o.coll === outbox[n].coll && o.id === outbox[n].id)) n++;
+        const rows = outbox.slice(0, n).map(o => ({wedding_id: W, coll: o.coll, id: o.id, data: o.data, updated_at: new Date().toISOString()}));
+        res = await sb.from("docs").upsert(rows);
+      } else res = await sb.from("docs").delete().match({wedding_id: W, coll: op.coll, id: op.id});
+      if (res.error) {
+        if (isNet(res.error)) { if (!offline) { offline = true; schedule(); } break; }
+        console.warn(res.error);
+        if (res.error.code === "42501") { canWrite = false; toast("Изменения недоступны — у вас режим просмотра"); }
+        else toast("Не удалось сохранить изменение");
+        outbox.splice(0, n); saveOutbox(); loadAll(); continue;
+      }
+      outbox.splice(0, n); saveOutbox();
+      if (offline) { offline = false; schedule(); }
+    }
+  } catch (e) { if (!offline) { offline = true; schedule(); } }
+  finally { flushing = false; }
+}
+async function add(c, data) { const id = uid(); queue({t: "up", coll: c, id, data: strip({...data, createdAt: Date.now(), by: me === "p1" || me === "p2" ? me : null})}); return id; }
+async function upd(c, id, patch) { const cur = S[c].find(x => x.id === id); if (!cur) return; queue({t: "up", coll: c, id, data: strip({...cur, ...patch})}); }
+async function del(c, id) { queue({t: "del", coll: c, id}); }
+async function saveSettings(patch) { queue({t: "up", coll: "meta", id: "settings", data: strip({...(S.settings || {}), ...patch})}); }
+async function loadAll() {
+  if (!sb || !W) return;
+  try {
+    let rows = [], from = 0;
+    for (;;) {
+      const {data, error} = await sb.from("docs").select("coll,id,data").eq("wedding_id", W).not("coll", "in", "(receipts,mbthumb,mbimg)").range(from, from + 999);
+      if (error) throw error;
+      rows = rows.concat(data); if (data.length < 1000) break; from += 1000;
+    }
+    resetS();
+    for (const r of rows) applyLocal({t: "up", coll: r.coll, id: r.id, data: r.data});
+    for (const op of outbox) applyLocal(op);
+    loaded = true; offline = false; saveCache(); schedule();
+  } catch (e) { console.warn(e); if (isNet(e)) { offline = true; } else toast("Не удалось загрузить данные"); loaded = loaded || !!S.settings; schedule(); }
+}
+let channel = null;
+function subscribe() {
+  if (channel) sb.removeChannel(channel);
+  channel = sb.channel("docs-" + W).on("postgres_changes", {event: "*", schema: "public", table: "docs"}, p => {
+    const row = p.eventType === "DELETE" ? p.old : p.new;
+    if (!row || row.wedding_id !== W || row.coll === "receipts" || row.coll === "mbthumb" || row.coll === "mbimg") return;
+    if (outbox.some(o => o.coll === row.coll && o.id === row.id)) return;
+    applyLocal(p.eventType === "DELETE" ? {t: "del", coll: row.coll, id: row.id} : {t: "up", coll: row.coll, id: row.id, data: row.data || {}});
+    saveCache(); schedule();
+  }).subscribe(st => { if (st === "SUBSCRIBED" && loaded) loadAll(); });
+}
+async function loadMembers() { const {data} = await sb.from("members").select("user_id,role").eq("wedding_id", W); if (data) { members = data; schedule(); } }
+function setMembership(m) {
+  if (W !== m.wedding_id) { W = m.wedding_id; resetS(); const c = LSget("wp-cache-" + W, null); if (c) Object.assign(S, c); outbox = LSget("wp-outbox-" + W, []); }
+  me = m.role; canWrite = me !== "viewer";
+  if (!tfTouched) ui.tf = canWrite ? me : "all";
+}
+async function start() {
+  closeAll();
+  if (!session) { W = null; me = null; loaded = false; resetS(); phase = "login"; render(); return; }
+  const uidv = session.user.id;
+  const cached = LSget("wp-mem-" + uidv, null);
+  if (cached) { setMembership(cached); loaded = !!S.settings; phase = "app"; render(); }
+  else { phase = "boot"; render(); }
+  const {data, error} = await sb.from("members").select("wedding_id,role").eq("user_id", uidv);
+  if (error) { if (cached) { offline = true; schedule(); } else { phase = "neterr"; render(); } return; }
+  if (!data.length) { LSset("wp-mem-" + uidv, null); W = null; phase = "join"; render(); return; }
+  LSset("wp-mem-" + uidv, data[0]); setMembership(data[0]); phase = "app";
+  await loadAll(); subscribe(); flush(); loadMembers();
+}
+async function boot() {
+  if (!CFG.url || !CFG.key || !window.supabase) { phase = "config"; render(); return; }
+  sb = supabase.createClient(CFG.url, CFG.key, {auth: {persistSession: true, autoRefreshToken: true, detectSessionInUrl: true}});
+  try { const {data} = await sb.auth.getSession(); session = data.session; } catch (e) { session = null; }
+  sb.auth.onAuthStateChange((ev, s) => {
+    if (ev === "PASSWORD_RECOVERY") { session = s; phase = "recover"; render(); return; }
+    const was = session && session.user.id; session = s;
+    if ((s && s.user.id) !== was) start();
+  });
+  window.addEventListener("online", () => { flush(); loadAll(); });
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible" && W) { flush(); loadAll(); } });
+  setInterval(() => { if (W && document.visibilityState === "visible") { flush(); if (outbox.length === 0) loadAll(); } }, 60000);
+  start();
+}
+
+/* ---------- ui primitives ---------- */
+let rq = 0;
+function schedule() { if (rq) return; rq = requestAnimationFrame(() => { rq = 0; render(); }); }
+function toast(t) { const el = document.createElement("div"); el.className = "toast"; el.textContent = t; document.body.appendChild(el); setTimeout(() => el.remove(), 2600); }
+function pill(map, k) { const v = map[k] || ["—", "s-none"]; return `<span class="pill ${v[1]}">${esc(v[0])}</span>`; }
+function barHTML(a, b, total) { // a: solid, b: light, total: scale
+  total = Math.max(total, a + b, 1);
+  return `<div class="bar"><i class="b1" style="width:${a / total * 100}%"></i><i class="b2" style="width:${b / total * 100}%"></i></div>`;
+}
+let sheetStack = [];
+function openSheet(title, html, opts = {}) {
+  const bg = document.createElement("div");
+  bg.className = "sheet-bg" + (opts.modal ? " modal" : "");
+  bg.innerHTML = `<div class="sheet" role="dialog" aria-modal="true">${opts.modal ? "" : '<div class="grab"></div>'}<div class="sh"><h3>${esc(title)}</h3><button class="x" data-x aria-label="Закрыть">✕</button></div><div class="sb">${html}</div></div>`;
+  bg.addEventListener("click", e => { if (e.target === bg || e.target.closest("[data-x]")) closeSheet(bg); });
+  document.body.appendChild(bg); document.body.style.overflow = "hidden";
+  sheetStack.push(bg); return bg;
+}
+function closeSheet(bg) { bg = bg || sheetStack[sheetStack.length - 1]; if (!bg) return; bg.remove(); sheetStack = sheetStack.filter(x => x !== bg); if (!sheetStack.length) document.body.style.overflow = ""; }
+function closeAll() { [...sheetStack].forEach(b => closeSheet(b)); }
+function ask(text, okLabel = "Удалить") {
+  return new Promise(res => {
+    const bg = openSheet("Точно?", `<p style="margin:0 0 6px">${esc(text)}</p><div class="btnrow"><button class="btn" data-n>Отмена</button><button class="btn pri" data-y style="background:var(--danger);color:#fff">${esc(okLabel)}</button></div>`, {modal: true});
+    bg.querySelector("[data-n]").onclick = () => { closeSheet(bg); res(false); };
+    bg.querySelector("[data-y]").onclick = () => { closeSheet(bg); res(true); };
+    bg.querySelector("[data-x]").addEventListener("click", () => res(false));
+  });
+}
+/* generic form: fields [{k,l,t:text|num|date|sel|area|tel|url|check, o:[[v,label]], half, ph}] */
+function fieldHTML(f, v) {
+  const id = "f_" + f.k, dis = canWrite ? "" : " disabled";
+  const val = v ?? f.def ?? "";
+  let inner;
+  if (f.t === "sel") inner = `<select id="${id}" name="${f.k}"${dis}>${f.o.map(([ov, ol]) => `<option value="${esc(ov)}"${String(ov) === String(val) ? " selected" : ""}>${esc(ol)}</option>`).join("")}</select>`;
+  else if (f.t === "area") inner = `<textarea id="${id}" name="${f.k}" placeholder="${esc(f.ph || "")}"${dis}>${esc(val)}</textarea>`;
+  else if (f.t === "check") return `<label class="tog">${esc(f.l)}<input type="checkbox" name="${f.k}"${val ? " checked" : ""}${dis}></label>`;
+  else {
+    const type = f.t === "date" ? "date" : f.t === "tel" ? "tel" : f.t === "url" ? "url" : "text";
+    const im = f.t === "num" ? ' inputmode="decimal" data-money' : "";
+    const shown = f.t === "num" && val !== "" && val != null ? (+val ? fmtMoneyStr(String(Math.round(+val * 100) / 100).replace(".", ",")) : "") : val;
+    inner = `<input id="${id}" name="${f.k}" type="${type}"${im} value="${esc(shown)}" placeholder="${esc(f.ph || "")}" autocomplete="off"${dis}>`;
+    if (f.t === "num" && /₽/.test(f.l)) inner = `<div class="money">${inner}<span>₽</span></div>`;
+  }
+  return `<div class="f"><label for="${id}">${esc(f.l)}</label>${inner}</div>`;
+}
+function formHTML(fields, vals) {
+  let out = "", i = 0;
+  while (i < fields.length) {
+    const f = fields[i];
+    if (f.half && fields[i + 1] && fields[i + 1].half) { out += `<div class="f2">${fieldHTML(f, vals[f.k])}${fieldHTML(fields[i + 1], vals[fields[i + 1].k])}</div>`; i += 2; }
+    else { out += fieldHTML(f, vals[f.k]); i++; }
+  }
+  return out;
+}
+function readForm(root, fields) {
+  const o = {};
+  for (const f of fields) {
+    const el = root.querySelector(`[name="${f.k}"]`); if (!el) continue;
+    if (f.t === "check") o[f.k] = el.checked;
+    else if (f.t === "num") o[f.k] = num(el.value);
+    else o[f.k] = el.value.trim();
+  }
+  return o;
+}
+function openForm({title, fields, vals = {}, onSave, onDelete, before = "", after = "", saveLabel = "Сохранить", required}) {
+  const bg = openSheet(title, `${before}<form novalidate>${formHTML(fields, vals)}${after}${canWrite ? `<div class="btnrow">${onDelete ? '<button type="button" class="btn danger" data-del>Удалить</button>' : ""}<button type="submit" class="btn pri" data-save>${esc(saveLabel)}</button></div>` : '<p class="mini">Режим просмотра — изменения недоступны.</p>'}</form>`);
+  const form = bg.querySelector("form");
+  form.addEventListener("submit", async e => {
+    e.preventDefault(); if (!canWrite) return;
+    const data = readForm(form, fields);
+    if (required && !String(data[required] || "").trim()) { const el = form.querySelector(`[name="${required}"]`); el.focus(); el.style.borderColor = "var(--danger)"; return; }
+    const b = form.querySelector("[data-save]"); b.disabled = true;
+    try { await onSave(data, bg); closeSheet(bg); } catch (err) { console.warn(err); b.disabled = false; }
+  });
+  const d = form.querySelector("[data-del]");
+  if (d) d.onclick = async () => { if (await ask("Запись будет удалена без возможности восстановления.")) { try { await onDelete(); closeSheet(bg); } catch (e) {} } };
+  return bg;
+}
+
+/* ---------- icons ---------- */
+const IC = {
+  home: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+  vendors: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M16 4.6a3.5 3.5 0 0 1 0 6.8M18.5 14.8c1.6.8 2.7 2.6 3 5.2"/></svg>',
+  budget: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="5.5" width="19" height="14" rx="2.5"/><path d="M2.5 9.5h19M16 14.5h2"/></svg>',
+  tasks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m4 7 2 2 3.5-3.5M4 15l2 2 3.5-3.5M13 7.5h7M13 15.5h7"/></svg>',
+  more: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg>',
+  bag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 8h14l-1 12H6zM9 8V6a3 3 0 0 1 6 0v2"/></svg>',
+  guests: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 4h12a2 2 0 0 1 2 2v14l-4-2.5L10 20l-4-2.5L4 20z"/><path d="M8 9h6M8 13h4"/></svg>',
+  seat: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="5"/><circle cx="12" cy="3.5" r="1.5"/><circle cx="12" cy="20.5" r="1.5"/><circle cx="3.5" cy="12" r="1.5"/><circle cx="20.5" cy="12" r="1.5"/></svg>',
+  glass: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M7 3h10l-1 7a4 4 0 0 1-8 0zM12 14v7M8.5 21h7"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>',
+  mood: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="8" height="10" rx="2"/><rect x="13" y="3" width="8" height="6" rx="2"/><rect x="13" y="11" width="8" height="10" rx="2"/><rect x="3" y="15" width="8" height="6" rx="2"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  xls: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><path d="M14 3v6h6M9 13l4 5M13 13l-4 5"/></svg>'
+};
+const TABS = [["home","Главная"],["vendors","Подрядчики"],["budget","Бюджет"],["tasks","Задачи"],["more","Ещё"]];
+const SUB = {purchases:"more", guests:"more", seating:"more", drinks:"more", settings:"more", mood:"more", schedule:"more"};
+const route = () => { const h = (location.hash || "#home").slice(1); if (/^mood-[a-z]+$/.test(h)) return h; return [...TABS.map(t => t[0]), ...Object.keys(SUB)].includes(h) ? h : "home"; };
+function go(r) { if (location.hash.slice(1) === r) { render(); window.scrollTo(0, 0); } else location.hash = r; }
+window.addEventListener("hashchange", () => { closeAll(); render(); window.scrollTo(0, 0); });
+
+/* ---------- render ---------- */
+const skel = `<div style="height:40px"></div><div class="skel" style="height:220px"></div><div class="skel"></div><div class="skel"></div>`;
+function render() {
+  const app = $("#app"), tb = $("#tabbar");
+  document.body.classList.toggle("ro", !canWrite);
+  document.body.classList.toggle("noside", phase !== "app" || !S.settings);
+  if (phase !== "app") {
+    tb.innerHTML = "";
+    if (phase === "boot") app.innerHTML = skel;
+    else if (phase === "config") app.innerHTML = `<div class="empty" style="padding-top:25vh"><div class="big">Нужна настройка</div><p>Укажите адрес и ключ Supabase в файле config.js.</p></div>`;
+    else if (phase === "neterr") app.innerHTML = `<div class="empty" style="padding-top:25vh"><div class="big">Нет связи</div><p>Не удалось связаться с сервером. Проверьте интернет.</p><button class="btn pri" data-act="retry">Повторить</button></div>`;
+    else if (phase === "login") { if (!$(".auth", app)) renderLogin(app); }
+    else if (phase === "join") { if (!$(".join", app)) renderJoin(app); }
+    else if (phase === "recover") { if (!$(".recover", app)) renderRecover(app); }
+    return;
+  }
+  if (!S.settings) {
+    tb.innerHTML = "";
+    if (!loaded) { app.innerHTML = skel; return; }
+    if (!canWrite) { app.innerHTML = `<div class="empty" style="padding-top:30vh"><div class="big">Планер ещё не настроен</div><p>Жених или невеста пока не заполнили данные свадьбы.</p><button class="btn" data-act="logout">Выйти</button></div>`; return; }
+    if (!$(".ob", app)) renderOnboarding(app);
+    return;
+  }
+  const r = route(), active = r.startsWith("mood-") ? "more" : SUB[r] || r;
+  const dl = daysLeft();
+  const SIDE_EXTRA = [["mood", "Атмосфера", "mood"], ["schedule", "Расписание", "clock"], ["purchases", "Покупки", "bag"], ["guests", "Гости", "guests"], ["seating", "Рассадка", "seat"], ["drinks", "Напитки", "glass"], ["settings", "Настройки", "gear"]];
+  tb.innerHTML = `<div class="in"><div class="brand dx"><div class="bn">${esc(name1())} <span>&amp;</span> ${esc(name2())}</div><div class="bd">${st().date ? esc(fmtD(st().date, true)) : ""}${dl != null && dl > 0 ? ` · ${dl} ${plural(dl, "день", "дня", "дней")}` : ""}</div></div>${TABS.map(([k, l]) => `<button class="${k === active ? "on" : ""}${k === "more" ? " mo" : ""}" data-go="${k}">${IC[k]}<span>${l}</span></button>`).join("")}<div class="sep dx"></div>${SIDE_EXTRA.map(([k, l, ic]) => `<button class="dx ${k === r || (k === "mood" && r.startsWith("mood-")) ? "on" : ""}" data-go="${k}">${IC[ic]}<span>${l}</span></button>`).join("")}<button class="dx" data-act="export">${IC.xls}<span>Excel</span></button><div class="dx sidefoot">${esc(roleName(me))}${session && session.user ? " · " + esc(session.user.email || "") : ""}</div></div>`;
+  const banner = (!canWrite ? `<div class="banner">👀 Режим просмотра — вы видите планер, но не можете его менять.</div>` : "")
+    + (offline ? `<div class="banner">Нет интернета — показаны сохранённые данные.${outbox.length ? ` Изменений ждут отправки: ${outbox.length}.` : ""} Всё синхронизируется, когда связь вернётся.</div>` : "");
+  const V = r.startsWith("mood-") ? () => vBoard(r.slice(5)) : {home: vHome, vendors: vVendors, budget: vBudget, tasks: vTasks, more: vMore, purchases: vPurchases, guests: vGuests, seating: vSeating, drinks: vDrinks, settings: vSettings, mood: vMood, schedule: vSchedule}[r];
+  const y = window.scrollY;
+  app.innerHTML = banner + V();
+  window.scrollTo(0, y);
+  if (r === "guests") applyGuestSearch();
+  if (r === "drinks") calcDrinks();
+  if (r === "settings") { if (canWrite) loadInvites(); if (!render._m || Date.now() - render._m > 5000) { render._m = Date.now(); loadMembers(); } }
+}
+const authErr = e => {
+  const m = String(e && (e.message || e) || "");
+  if (/invalid login/i.test(m)) return "Неверная почта или пароль";
+  if (/already registered|already exists/i.test(m)) return "Эта почта уже зарегистрирована — войдите";
+  if (/password.*(6|short|least)/i.test(m)) return "Пароль — минимум 6 символов";
+  if (/email.*invalid|invalid.*email|valid email/i.test(m)) return "Проверьте адрес почты";
+  if (/not confirmed/i.test(m)) return "Почта не подтверждена — откройте письмо от Supabase";
+  if (/rate|too many/i.test(m)) return "Слишком много попыток, подождите минуту";
+  if (isNet(e)) return "Нет связи с сервером";
+  return "Ошибка: " + m;
+};
+function renderLogin(app, modeSignup = false) {
+  app.innerHTML = `<form class="ob auth" novalidate><div style="text-align:center;font-size:44px;margin-top:8vh">💍</div><h1 style="text-align:center">Свадебный планер</h1>
+  <p style="text-align:center">${modeSignup ? "Создайте аккаунт — для каждого из вас свой." : "Войдите, чтобы открыть ваш планер."}</p>
+  <div class="f"><label for="em">Почта</label><input id="em" name="email" type="email" autocomplete="email" inputmode="email" required></div>
+  <div class="f"><label for="pw">Пароль</label><input id="pw" name="password" type="password" autocomplete="${modeSignup ? "new-password" : "current-password"}" minlength="6" required></div>
+  <p class="mini neg" id="aerr" style="min-height:18px;margin:0 4px 8px"></p>
+  <button class="btn pri w" type="submit">${modeSignup ? "Зарегистрироваться" : "Войти"}</button>
+  <div class="btnrow"><button class="btn" type="button" data-sw>${modeSignup ? "У меня есть аккаунт" : "Регистрация"}</button>${modeSignup ? "" : '<button class="btn" type="button" data-forgot>Забыли пароль?</button>'}</div></form>`;
+  const f = $(".auth", app), err = $("#aerr", f);
+  f.querySelector("[data-sw]").onclick = () => renderLogin(app, !modeSignup);
+  const fg = f.querySelector("[data-forgot]");
+  if (fg) fg.onclick = async () => {
+    const email = f.email.value.trim(); if (!email) { err.textContent = "Введите почту, на неё придёт ссылка"; return; }
+    const {error} = await sb.auth.resetPasswordForEmail(email, {redirectTo: location.origin + location.pathname});
+    err.textContent = error ? authErr(error) : "Письмо со ссылкой для смены пароля отправлено";
+  };
+  f.addEventListener("submit", async e => {
+    e.preventDefault(); err.textContent = "";
+    const email = f.email.value.trim(), password = f.password.value;
+    if (!email || password.length < 6) { err.textContent = !email ? "Введите почту" : "Пароль — минимум 6 символов"; return; }
+    const b = f.querySelector('[type="submit"]'); b.disabled = true;
+    try {
+      const r = modeSignup ? await sb.auth.signUp({email, password}) : await sb.auth.signInWithPassword({email, password});
+      if (r.error) throw r.error;
+      if (modeSignup && !r.data.session) err.textContent = "Мы отправили письмо — подтвердите почту и войдите";
+    } catch (ex) { err.textContent = authErr(ex); }
+    b.disabled = false;
+  });
+}
+function renderJoin(app) {
+  app.innerHTML = `<div class="ob join"><div style="text-align:center;font-size:40px;margin-top:6vh">💌</div><h1 style="text-align:center">Почти готово</h1>
+  <p style="text-align:center">${esc(session.user.email || "")}</p>
+  <h2>Есть код приглашения</h2>
+  <form class="card pad" id="jf" novalidate><div class="f"><label for="jc">Код из 6 символов</label><input id="jc" name="code" autocomplete="off" autocapitalize="characters" maxlength="12" placeholder="Например, 7F3A9C"></div><p class="mini neg" id="jerr" style="margin:0 4px 8px;min-height:16px"></p><button class="btn pri w" type="submit">Присоединиться</button></form>
+  <h2>Или создать новый планер</h2>
+  <div class="card pad"><p class="mini" style="margin:0 0 10px">Кто вы в этой паре?</p><div class="btnrow" style="margin:0"><button class="btn" data-new="p1">🤵 Я жених</button><button class="btn" data-new="p2">👰 Я невеста</button></div></div>
+  <div style="text-align:center;margin-top:18px"><button class="btn" data-act="logout">Выйти</button></div></div>`;
+  const jf = $("#jf", app), jerr = $("#jerr", app);
+  jf.addEventListener("submit", async e => {
+    e.preventDefault(); const code = jf.code.value.trim(); if (!code) { jerr.textContent = "Введите код"; return; }
+    const {error} = await sb.rpc("join_wedding", {code});
+    if (error) { jerr.textContent = /invalid code/i.test(error.message) ? "Код не найден — проверьте символы" : /full/i.test(error.message) ? "В этой свадьбе уже есть жених и невеста. Попросите код для просмотра." : authErr(error); return; }
+    start();
+  });
+  app.querySelectorAll("[data-new]").forEach(b => b.onclick = async () => {
+    b.disabled = true;
+    const {error} = await sb.rpc("create_wedding", {my_role: b.dataset.new});
+    if (error) { toast(authErr(error)); b.disabled = false; return; }
+    start();
+  });
+}
+function renderRecover(app) {
+  app.innerHTML = `<form class="ob recover card pad" novalidate style="margin-top:12vh"><h1>Новый пароль</h1><div class="f"><label for="np">Пароль (минимум 6 символов)</label><input id="np" name="pw" type="password" autocomplete="new-password"></div><p class="mini neg" id="rerr"></p><button class="btn pri w" type="submit">Сохранить</button></form>`;
+  const f = $(".recover", app);
+  f.addEventListener("submit", async e => {
+    e.preventDefault(); const pw = f.pw.value; if (pw.length < 6) { $("#rerr").textContent = "Минимум 6 символов"; return; }
+    const {error} = await sb.auth.updateUser({password: pw});
+    if (error) { $("#rerr").textContent = authErr(error); return; }
+    toast("Пароль обновлён"); history.replaceState(null, "", location.pathname); start();
+  });
+}
+const head = (t, back) => `<h1 class="ttl">${back ? `<button class="back" data-go="${back}">‹ Назад</button>` : ""}${t ? esc(t) : ""}</h1>`;
+const fab = act => `<button class="fab" data-act="${act}" aria-label="Добавить">+</button>`;
+
+/* ---------- HOME ---------- */
+function vHome() {
+  const s = st(), d = daysLeft(), T = totals();
+  const cnt = d == null ? `<div class="count" style="font-size:28px">Дата не выбрана</div>` : d > 0 ? `<div class="count">${d}<small>${plural(d, "день", "дня", "дней")} до свадьбы</small></div>` : d === 0 ? `<div class="count" style="font-size:44px">Сегодня! 🥂</div>` : `<div class="count" style="font-size:34px">Вы женаты ${-d} ${plural(-d, "день", "дня", "дней")}</div>`;
+  const upcoming = S.payments.filter(p => p.status !== "paid").sort((a, b) => (a.date || "9") < (b.date || "9") ? -1 : 1).slice(0, 4);
+  const cur = periodNow();
+  const curIdx = PER.findIndex(p => p.key === cur);
+  const todo = S.tasks.filter(t => !isDone(t) && (isLate(t) || PER.findIndex(p => p.key === t.period) <= Math.max(curIdx, 0))).sort((a, b) => (taskDue(a) || 0) - (taskDue(b) || 0)).slice(0, 5);
+  const G = gStats();
+  const booked = cats().filter(c => S.vendors.some(v => v.catId === c.id && (v.status === "contract" || v.status === "paid"))).length;
+  const tDone = S.tasks.filter(isDone).length;
+  return `
+  ${me === "p1" || me === "p2" ? `<div class="mini" style="margin:2px 6px 8px;font-size:14px">Привет, ${esc(roleName(me))} 👋</div>` : ""}
+  <div class="hero">
+    <div class="names">${esc(name1())}<span>&amp;</span>${esc(name2())}</div>
+    <div class="date">${s.date ? esc(fmtD(s.date, true)) : ""}${s.venue ? " · " + esc(s.venue) : ""}${s.city ? ", " + esc(s.city) : ""}</div>
+    ${cnt}
+  </div>
+  <div class="cols"><div>
+  <h2>Бюджет <button class="lnk" data-go="budget">Подробнее</button></h2>
+  <div class="card pad" data-go="budget" role="button">
+    <div style="display:flex;justify-content:space-between;align-items:baseline;gap:10px;margin-bottom:10px"><div><div class="mini">Оплачено</div><div class="big">${rub(T.paid)}</div></div><div style="text-align:right"><div class="mini">Бюджет</div><div style="font-weight:700">${T.budget ? rub(T.budget) : "не задан"}</div></div></div>
+    ${barHTML(T.paid, T.toPay, T.budget)}
+    <div class="legend"><span><i style="background:var(--accent)"></i>Оплачено</span><span><i style="background:var(--accent2);opacity:.55"></i>К оплате ${rub(T.toPay)}</span>${T.budget ? `<span class="${T.free < 0 ? "neg" : ""}">${T.free < 0 ? "Перерасход " + rub(-T.free) : "Свободно " + rub(T.free)}</span>` : ""}</div>
+  </div>
+  <h2>Ближайшие платежи <button class="lnk" data-go="budget">Все</button></h2>
+  <div class="card list">${upcoming.length ? upcoming.map(payRow).join("") : `<div class="empty">Запланированных платежей нет.<br>Добавьте их в карточке подрядчика.</div>`}</div>
+  </div><div>
+  <h2>Что сделать сейчас <button class="lnk" data-go="tasks">Все задачи</button></h2>
+  <div class="card list">${todo.length ? todo.map(taskRow).join("") : `<div class="empty">Всё сделано на этом этапе 🎉</div>`}</div>
+  </div></div>
+  <div class="stats s4d" style="margin-top:22px">
+    <button class="stat" data-go="vendors" style="text-align:left"><div class="v">${booked} из ${S.categories.length}</div><div class="l">подрядчиков с договором</div></button>
+    <button class="stat" data-go="tasks" style="text-align:left"><div class="v">${tDone} из ${S.tasks.length}</div><div class="l">задач выполнено</div></button>
+    <button class="stat" data-go="guests" style="text-align:left"><div class="v">${G.yes} из ${G.total || +s.guests || 0}</div><div class="l">гостей подтвердили</div></button>
+    <button class="stat" data-go="purchases" style="text-align:left"><div class="v">${S.purchases.filter(p => p.status === "bought").length} из ${S.purchases.length}</div><div class="l">покупок сделано</div></button>
+  </div>`;
+}
+
+/* ---------- VENDORS ---------- */
+const isCand = v => v.status === "search" || v.status === "talks";
+const isSel = v => v.status === "contract" || v.status === "paid";
+const stars = n => n ? "★".repeat(n) + "☆".repeat(5 - n) : "";
+function vendorRow(v) {
+  const paid = vPaid(v), price = +v.price || 0;
+  return swipe("vendors", v.id, `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}${v.contact ? `<span>${esc(v.contact)}</span>` : ""}</div>${price ? `<div style="margin-top:8px">${barHTML(paid, Math.max(0, price - paid), price)}</div>` : ""}</div><div class="r">${price ? rub(price) : "—"}${price ? `<small>оплачено ${rub(paid)}</small>` : ""}</div></button>`);
+}
+function candRow(v) {
+  return swipe("vendors", v.id, `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${v.status === "talks" ? pill(VST, "talks") : ""}${v.rating ? `<span style="color:var(--accent2)">${stars(+v.rating)}</span>` : ""}${v.link ? "<span>🔗</span>" : ""}${v.notes ? `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(v.notes.split("\n")[0])}</span>` : ""}</div></div><div class="r">${+v.price ? rub(v.price) : ""}${+v.price ? "<small>предложение</small>" : ""}</div></button>`);
+}
+function vVendors() {
+  const f = ui.vf;
+  const flt = v => f === "all" ? v.status !== "rejected" : f === "cand" ? isCand(v) : f === "sel" ? isSel(v) : v.status === "rejected";
+  const n = p => S.vendors.filter(p).length;
+  let html = head("Подрядчики");
+  html += `<div class="chips">${[["all", "Все", n(v => v.status !== "rejected")], ["cand", "Смотрим", n(isCand)], ["sel", "Выбраны", n(isSel)], ["rejected", "Отказались", n(v => v.status === "rejected")]].map(([k, l, c]) => `<button class="chip ${f === k ? "on" : ""}" data-vf="${k}">${l}<b>${c}</b></button>`).join("")}</div>`;
+  if (f === "all" || f === "cand") html += `<p class="mini" style="margin:8px 4px 0">«Смотрим» — кандидаты: ссылка, ваш комментарий и оценка. Когда определитесь — откройте кандидата и нажмите «Выбрать».</p>`;
+  let any = false;
+  html += `<div class="catgrid">`;
+  for (const c of cats()) {
+    const vs = S.vendors.filter(v => v.catId === c.id && flt(v)).sort(byOrder);
+    if (!vs.length && f !== "all" && f !== "cand") continue;
+    if (!vs.length && f === "cand") continue;
+    any = true;
+    const sel = vs.filter(isSel), cand = vs.filter(isCand), rej = vs.filter(v => v.status === "rejected");
+    html += `<section class="cat"><h2><span>${esc(c.emoji || "")} ${esc(c.name)}</span>${catBooked(c.id) ? '<span class="pill s-contract">✓ выбран</span>' : ""}</h2><div class="card list">`;
+    html += sel.map(vendorRow).join("");
+    if (cand.length) html += `${sel.length ? `<div class="row" style="padding-top:8px;padding-bottom:4px"><span class="mini" style="font-weight:700;letter-spacing:.06em;text-transform:uppercase">Смотрим · ${cand.length}</span></div>` : ""}${cand.map(candRow).join("")}`;
+    html += rej.map(candRow).join("");
+    if (f === "all" || f === "cand") html += `<button class="row ghost wr" data-addcand="${esc(c.id)}"><div class="grow"><div class="t">+ ${sel.length ? "Добавить ещё" : cand.length ? "Добавить кандидата" : "Добавить кандидата или подрядчика"}</div></div></button>`;
+    html += `</div></section>`;
+  }
+  html += `</div>`;
+  const orphan = S.vendors.filter(v => !catById(v.catId) && flt(v));
+  if (orphan.length) { any = true; html += `<h2>Без категории</h2><div class="card list">${orphan.map(v => isSel(v) ? vendorRow(v) : candRow(v)).join("")}</div>`; }
+  if (!any) html += `<div class="empty">${f === "rejected" ? "Отказов нет" : f === "cand" ? "Кандидатов пока нет — нажмите «+», чтобы добавить" : "Здесь пока пусто"}</div>`;
+  return html + fab("vendor");
+}
+const vendorFields = () => [
+  {k: "name", l: "Название / имя", ph: "Например, Студия «Лён»"},
+  {k: "catId", l: "Категория", t: "sel", o: cats().map(c => [c.id, (c.emoji ? c.emoji + " " : "") + c.name])},
+  {k: "status", l: "Статус", t: "sel", o: Object.entries(VST).map(([k, [l]]) => [k, l]), half: true},
+  {k: "price", l: "Стоимость, ₽", t: "num", ph: "0", half: true},
+  {k: "link", l: "Instagram / сайт / Telegram", ph: "@nickname или ссылка"},
+  {k: "rating", l: "Наша оценка", t: "sel", o: [["", "—"], ["5", "★★★★★"], ["4", "★★★★☆"], ["3", "★★★☆☆"], ["2", "★★☆☆☆"], ["1", "★☆☆☆☆"]], half: true},
+  {k: "phone", l: "Телефон", t: "tel", half: true},
+  {k: "contact", l: "Контактное лицо"},
+  {k: "contract", l: "Ссылка на договор (Google Диск, iCloud…)", ph: "https://…"},
+  {k: "notes", l: "Наш комментарий", t: "area", ph: "Что понравилось, что смущает, условия, цены…"}
+];
+const candFields = () => [
+  {k: "name", l: "Кто это", ph: "Имя или название"},
+  {k: "link", l: "Instagram / сайт / Telegram", ph: "@nickname или ссылка"},
+  {k: "notes", l: "Наш комментарий", t: "area", ph: "Что понравилось, что смущает, цены…"},
+  {k: "rating", l: "Оценка", t: "sel", o: [["", "—"], ["5", "★★★★★"], ["4", "★★★★☆"], ["3", "★★★☆☆"], ["2", "★★☆☆☆"], ["1", "★☆☆☆☆"]], half: true},
+  {k: "price", l: "Цена по предложению, ₽", t: "num", half: true},
+  {k: "catId", l: "Категория", t: "sel", o: cats().map(c => [c.id, (c.emoji ? c.emoji + " " : "") + c.name])}
+];
+const fixRating = d => { if ("rating" in d) d.rating = d.rating ? +d.rating : 0; return d; };
+function editVendor(v, catId) {
+  openForm({title: v ? "Подрядчик" : "Новый подрядчик", fields: vendorFields(), required: "name",
+    vals: v ? {...v, rating: v.rating ? String(v.rating) : ""} : {catId: catId || cats()[0]?.id, status: "contract"},
+    onSave: async d => { fixRating(d); if (v) await upd("vendors", v.id, d); else { const id = await add("vendors", d); whenThere(() => vendorById(id), () => setTimeout(() => { if (!sheetStack.length) showVendor(id); }, 40)); } },
+    onDelete: v ? async () => { for (const p of S.payments.filter(p => p.vendorId === v.id)) await del("payments", p.id); await del("vendors", v.id); closeAll(); } : null});
+}
+function addCandidate(catId) {
+  openForm({title: "Кандидат", fields: candFields(), required: "name", saveLabel: "Добавить в «Смотрим»", vals: {catId: catId || cats()[0]?.id},
+    after: `<p class="mini">Уже выбрали и подписываете договор? <button type="button" class="lnk" style="color:var(--accent);font-weight:700" data-direct>Добавить сразу как подрядчика</button></p>`,
+    onSave: async d => { fixRating(d); await add("vendors", {...d, status: "search"}); toast("Добавлено в «Смотрим»"); }});
+  const bg = sheetStack[sheetStack.length - 1];
+  const b = bg && bg.querySelector("[data-direct]"); if (b) b.onclick = () => { closeSheet(bg); editVendor(null, catId); };
+}
+function chooseVendor(v) {
+  const others = S.vendors.filter(x => x.catId === v.catId && x.id !== v.id && isCand(x));
+  openForm({title: "Выбираем «" + v.name + "»", saveLabel: "Выбрать",
+    before: `<p class="mini" style="margin:-6px 0 12px">Кандидат станет подрядчиком со статусом «Договор». Задаток можно внести следующим шагом.</p>`,
+    fields: [{k: "price", l: "Стоимость по договору, ₽", t: "num"}, {k: "phone", l: "Телефон", t: "tel", half: true}, {k: "contact", l: "Контактное лицо", half: true}, ...(others.length ? [{k: "rejectOthers", l: `Остальных кандидатов в категории (${others.length}) отметить «Отказались»`, t: "check", def: true}] : [])],
+    vals: {price: v.price, phone: v.phone, contact: v.contact, rejectOthers: true},
+    onSave: async d => {
+      const ro = d.rejectOthers; delete d.rejectOthers;
+      await upd("vendors", v.id, {...d, status: "contract", chosenAt: Date.now()});
+      if (ro) for (const o of others) await upd("vendors", o.id, {status: "rejected"});
+      toast("Подрядчик выбран 🎉"); reopenVendor(v.id);
+    }});
+}
+const linkHTML = u => { if (!u) return ""; const href = /^https?:\/\//i.test(u) ? u : /^@/.test(u) ? "https://instagram.com/" + u.slice(1) : "https://" + u; return `<a href="${esc(href)}" target="_blank" rel="noopener">${esc(u)}</a>`; };
+function showVendor(id) {
+  const v = vendorById(id); if (!v) return;
+  const cand = !isSel(v);
+  const paid = vPaid(v), price = +v.price || 0, plan = vPlanned(v);
+  const pays = S.payments.filter(p => p.vendorId === id).sort((a, b) => (a.date || "") < (b.date || "") ? -1 : 1);
+  const info = `<div style="margin-top:12px">
+    ${v.link ? `<p class="info"><span>Ссылка:</span> ${linkHTML(v.link)}</p>` : ""}
+    ${v.rating ? `<p class="info"><span>Оценка:</span> <span style="color:var(--accent2)">${stars(+v.rating)}</span></p>` : ""}
+    ${v.contact ? `<p class="info"><span>Контакт:</span> ${esc(v.contact)}</p>` : ""}
+    ${v.phone ? `<p class="info"><span>Телефон:</span> ${esc(v.phone)} · <a href="tel:${esc(v.phone.replace(/[^\d+]/g, ""))}">позвонить</a></p>` : ""}
+    ${v.contract ? `<p class="info"><span>Договор:</span> ${linkHTML(v.contract)}</p>` : ""}
+    ${v.notes ? `<p class="info" style="white-space:pre-wrap;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px">${esc(v.notes)}</p>` : ""}
+    </div>`;
+  const body = cand ? `
+    <div style="display:flex;gap:8px;align-items:center;margin:-6px 0 6px;flex-wrap:wrap">${pill(VST, v.status)}<span class="mini">${esc(catLabel(v.catId))}</span>${price ? `<span class="mini">· предложение ${rub(price)}</span>` : ""}</div>
+    ${info}
+    <div class="wr">${v.status === "rejected" ? `<div class="btnrow"><button class="btn" data-st="search">Вернуть в «Смотрим»</button></div>` : `<div class="btnrow"><button class="btn acc" data-choose>✓ Выбрать</button></div><div class="btnrow"><button class="btn" data-st="${v.status === "talks" ? "search" : "talks"}">${v.status === "talks" ? "Просто смотрим" : "Ведём переговоры"}</button><button class="btn" data-st="rejected">Отказались</button></div>`}
+    <div class="btnrow"><button class="btn" data-edit>✎ Изменить</button><button class="btn danger" data-delv>Удалить</button></div></div>`
+  : `
+    <div style="display:flex;gap:8px;align-items:center;margin:-6px 0 12px;flex-wrap:wrap">${pill(VST, v.status)}<span class="mini">${esc(catLabel(v.catId))}</span></div>
+    <div class="kv"><div><span>По договору</span><b>${price ? rub(price) : "—"}</b></div><div><span>Оплачено</span><b>${rub(paid)}</b></div><div><span>Остаток</span><b class="${price && paid > price ? "neg" : ""}">${price ? rub(price - paid) : "—"}</b></div></div>
+    ${price ? barHTML(paid, plan, price) : ""}
+    ${info}
+    <h2 style="margin-top:16px">Платежи и задатки</h2>
+    <div class="card list">${pays.length ? pays.map(p => payRow(p, true)).join("") : `<div class="empty">Платежей пока нет</div>`}</div>
+    <div class="btnrow wr"><button class="btn" data-edit>✎ Изменить</button><button class="btn pri" data-pay>+ Платёж</button></div>
+    <div class="wr" style="margin-top:10px"><button class="btn danger w" data-delv>Удалить подрядчика</button></div>`;
+  const bg = openSheet(v.name, body);
+  const on = (sel, fn) => { const el = bg.querySelector(sel); if (el) el.onclick = fn; };
+  on("[data-pay]", () => editPayment(null, id, bg));
+  on("[data-edit]", () => { closeSheet(bg); editVendor(v); });
+  on("[data-choose]", () => { closeSheet(bg); chooseVendor(v); });
+  bg.querySelectorAll("[data-st]").forEach(b => b.onclick = async () => { await upd("vendors", v.id, {status: b.dataset.st}); closeSheet(bg); toast(VST[b.dataset.st][0]); });
+  on("[data-delv]", async () => { if (await ask(`«${v.name}»${pays.length ? " и все его платежи" : ""} будут удалены.`)) { for (const p of pays) await del("payments", p.id); await del("vendors", v.id); closeSheet(bg); toast("Удалено"); } });
+  bg.querySelectorAll("[data-pay-id]").forEach(b => b.onclick = e => { e.stopPropagation(); editPayment(S.payments.find(p => p.id === b.dataset.payId), id, bg); });
+}
+function payRow(p, inVendor) {
+  const v = vendorById(p.vendorId), late = p.status !== "paid" && p.date && parseD(p.date) < today0();
+  const sub = [PTYPE[p.type] || "Платёж", PMETH[p.method], p.date ? (p.status === "paid" ? "" : "до ") + fmtShort(p.date) : ""].filter(Boolean).map(esc).join(" · ");
+  return `<button class="row" ${inVendor ? `data-pay-id="${esc(p.id)}"` : `data-payment="${esc(p.id)}"`}><div class="grow"><div class="t">${inVendor ? esc(PTYPE[p.type] || "Платёж") : esc(v ? v.name : "Подрядчик удалён")}</div><div class="s">${inVendor ? esc([PMETH[p.method], p.date ? fmtD(p.date) : "", p.note, p.by === "p1" || p.by === "p2" ? "внёс(ла) " + who(p.by) : ""].filter(Boolean).join(" · ")) : sub}</div></div><div class="r">${rub(p.amount)}<small>${p.status === "paid" ? '<span class="pill s-paid">оплачено</span>' : late ? '<span class="pill s-late">просрочено</span>' : '<span class="pill s-search">план</span>'}</small></div></button>`;
+}
+const payFields = () => [
+  {k: "amount", l: "Сумма, ₽", t: "num", ph: "0", half: true},
+  {k: "status", l: "Статус", t: "sel", o: [["paid", "Оплачено"], ["planned", "Запланировано"]], half: true},
+  {k: "type", l: "Тип", t: "sel", o: Object.entries(PTYPE), half: true},
+  {k: "method", l: "Способ", t: "sel", o: Object.entries(PMETH), half: true},
+  {k: "date", l: "Дата оплаты / срок доплаты", t: "date"},
+  {k: "note", l: "Комментарий", ph: "Например, кто вносил, номер чека"}
+];
+function editPayment(p, vendorId, vendorSheet) {
+  const v = vendorById(vendorId || p?.vendorId);
+  const rest = v ? Math.max(0, (+v.price || 0) - vPaid(v) - vPlanned(v)) : 0;
+  openForm({title: p ? "Платёж" : "Новый платёж", fields: payFields(), before: v ? `<p class="mini" style="margin:-6px 0 12px">${esc(v.name)}${!p && rest ? " · не распределено " + rub(rest) : ""}</p>` : "",
+    vals: p || {status: "paid", type: vPaid(v || {}) ? "extra" : "deposit", method: "transfer", date: iso(new Date()), amount: rest || ""},
+    onSave: async d => {
+      if (!d.amount) throw toast("Укажите сумму");
+      const others = v ? sum(S.payments.filter(x => x.vendorId === v.id && x.status === "paid" && (!p || x.id !== p.id)), x => x.amount) : 0;
+      if (p) await upd("payments", p.id, d); else await add("payments", {...d, vendorId: v.id});
+      if (v) { // auto status
+        const paid = others + (d.status === "paid" ? d.amount : 0);
+        const price = +v.price || 0;
+        let ns = v.status;
+        if (price && paid >= price) ns = "paid"; else if (paid > 0 && (v.status === "search" || v.status === "talks" || v.status === "paid")) ns = "contract";
+        if (ns !== v.status) await upd("vendors", v.id, {status: ns});
+      }
+      if (vendorSheet) { closeSheet(vendorSheet); reopenVendor(v.id); }
+    },
+    onDelete: p ? async () => { await del("payments", p.id); if (vendorSheet) { closeSheet(vendorSheet); reopenVendor(v.id); } } : null});
+}
+function reopenVendor(id) { setTimeout(() => { if (!sheetStack.length) showVendor(id); }, 60); }
+function whenThere(check, fn, n = 30) { if (check()) return fn(); if (n > 0) setTimeout(() => whenThere(check, fn, n - 1), 100); }
+
+/* ---------- BUDGET ---------- */
+function vBudget() {
+  const T = totals();
+  const pf = ui.pf;
+  const pays = S.payments.filter(p => pf === "all" || (pf === "paid" ? p.status === "paid" : p.status !== "paid")).sort((a, b) => (a.date || "9") < (b.date || "9") ? -1 : 1);
+  return head("Бюджет") + `
+  <div class="card pad">
+    <button data-act="budgetTotal" style="width:100%;text-align:left"><div class="mini">Общий бюджет ${canWrite ? "· нажмите, чтобы изменить" : ""}</div><div class="big">${T.budget ? rub(T.budget) : "Задать бюджет"}</div></button>
+    <div style="margin-top:12px">${barHTML(T.paid, T.toPay, T.budget)}</div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Оплачено ${rub(T.paid)}</span><span><i style="background:var(--accent2);opacity:.55"></i>К оплате ${rub(T.toPay)}</span>${T.budget ? `<span class="${T.free < 0 ? "neg" : ""}"><i style="background:var(--soft);border:1px solid var(--line)"></i>${T.free < 0 ? "Перерасход " + rub(-T.free) : "Свободно " + rub(T.free)}</span>` : ""}</div>
+  </div>
+  <div class="stats" style="margin-top:10px">
+    <div class="stat"><div class="v">${rub(T.contract)}</div><div class="l">по договорам и покупкам</div></div>
+    <div class="stat"><div class="v ${T.budget && T.planned > T.budget ? "neg" : ""}">${rub(T.planned)}</div><div class="l">распределено по плану</div></div>
+  </div>
+  <div class="cols"><div>
+  <h2>План и факт по категориям</h2>
+  <div class="card list">${cats().map(c => { const x = catStats(c); const over = x.planned && x.contract > x.planned; return swipe("categories", c.id, `<button class="row" data-cat="${esc(c.id)}"><div class="grow"><div class="t">${esc(c.emoji || "")} ${esc(c.name)}</div><div style="margin-top:7px">${x.planned || x.contract ? `<div class="bar"><i class="${over ? "over" : "b1"}" style="width:${Math.min(100, x.paid / Math.max(x.planned, x.contract, 1) * 100)}%"></i><i class="b2" style="width:${Math.max(0, (x.contract - x.paid) / Math.max(x.planned, x.contract, 1) * 100)}%"></i></div>` : ""}</div><div class="s" style="margin-top:5px">план ${rub(x.planned)} · факт <span class="${over ? "neg" : ""}">${rub(x.contract)}</span></div></div><div class="r">${rub(x.paid)}<small>оплачено</small></div></button>`); }).join("") || '<div class="empty">Категорий нет</div>'}<button class="row addrow wr" data-act="category">＋ Добавить категорию</button></div>
+  <h2>Расходы ${S.expenses.length ? `<span style="text-transform:none;letter-spacing:0">${rub(sum(S.expenses, e => e.amount))}</span>` : ""}</h2>
+  <div class="card list">${S.expenses.length ? [...S.expenses].sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || 0) - (a.createdAt || 0)).map(expenseRow).join("") : '<div class="empty">Мелкие траты — платье, макияж, такси, кольца… Добавляйте кнопкой «+».</div>'}<button class="row addrow wr" data-act="expense">＋ Добавить расход</button></div>
+  </div><div>
+  <h2>Все платежи</h2>
+  <div class="chips">${[["all", "Все"], ["planned", "Предстоящие"], ["paid", "Оплаченные"]].map(([k, l]) => `<button class="chip ${pf === k ? "on" : ""}" data-pf="${k}">${l}</button>`).join("")}</div>
+  <div class="card list" style="margin-top:8px">${pays.length ? pays.map(p => payRow(p)).join("") : '<div class="empty">Платежей нет. Добавляйте задатки и доплаты в карточке подрядчика.</div>'}</div>
+  </div></div>
+  <div style="margin-top:18px"><button class="btn w" data-act="export">${IC.xls.replace("<svg", '<svg width="20" height="20"')} Выгрузить в Excel</button></div>` + fab("expense");
+}
+function editCategory(c) {
+  const fields = [{k: "emoji", l: "Иконка", half: true, ph: "💐"}, {k: "planned", l: "План, ₽", t: "num", half: true}, {k: "name", l: "Название"}];
+  openForm({title: c ? "Категория" : "Новая категория", fields, vals: c || {emoji: "✨"}, required: "name",
+    onSave: async d => { if (c) await upd("categories", c.id, d); else await add("categories", {...d, order: S.categories.length}); },
+    onDelete: null});
+  if (c) { const bg = sheetStack[sheetStack.length - 1], row = bg && bg.querySelector(".btnrow"); if (row && canWrite) { const b = document.createElement("button"); b.type = "button"; b.className = "btn danger"; b.textContent = "Удалить"; b.onclick = () => deleteCategory(c); row.prepend(b); } }
+}
+
+/* ---------- TASKS ---------- */
+function taskRow(t) {
+  const done = isDone(t), auto = autoDone(t) && !t.done, late = isLate(t), due = taskDue(t);
+  const c = catById(t.catId);
+  return swipe("tasks", t.id, `<div class="row ${done ? "done" : ""}"><button class="ck ${done ? "on" : ""}" data-tick="${esc(t.id)}" aria-label="Готово"></button><button class="grow" style="text-align:left" data-task="${esc(t.id)}"><div class="t">${esc(t.title)}</div><div class="s"><span>${esc(who(t.who))}</span>${c ? `<span>${esc(c.emoji || "")} ${esc(c.name)}</span>` : ""}${auto ? '<span class="pill s-contract">авто: договор есть</span>' : ""}${late ? `<span class="pill s-late">просрочено</span>` : !done && due ? `<span>до ${esc(fmtShort(due))}</span>` : ""}</div></button></div>`);
+}
+function vTasks() {
+  const f = ui.tf, cur = periodNow();
+  const flt = t => f === "all" || (f === "open" ? !isDone(t) : f === "late" ? isLate(t) : (t.who === f || t.who === "both"));
+  const done = S.tasks.filter(isDone).length, all = S.tasks.length;
+  let html = head("Задачи") + `<div class="card pad" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;font-weight:700"><span>Выполнено ${done} из ${all}</span><span>${all ? Math.round(done / all * 100) : 0}%</span></div><div style="margin-top:9px">${barHTML(done, 0, all)}</div></div>`;
+  const lateN = S.tasks.filter(isLate).length;
+  html += `<div class="chips">${[["all", "Все"], ["open", "Открытые"], ["late", `Просрочено${lateN ? " " + lateN : ""}`], ["p1", name1()], ["p2", name2()]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-tf="${k}">${esc(l)}</button>`).join("")}</div>`;
+  const d = wDate();
+  html += `<div class="catgrid">`;
+  for (const p of PER) {
+    const ts = S.tasks.filter(t => t.period === p.key && flt(t)).sort((a, b) => (isDone(a) - isDone(b)) || byOrder(a, b));
+    if (!ts.length) continue;
+    const end = d ? new Date(d.getTime() - p.to * 864e5) : null;
+    const tag = p.key === cur ? '<span class="pill s-now">сейчас</span>' : "";
+    html += `<section class="cat"><h2><span>${esc(p.label)} ${tag}</span><span style="text-transform:none;letter-spacing:0">${end && p.key !== "day" ? "до " + esc(fmtShort(end)) : end ? esc(fmtShort(end)) : ""}</span></h2><div class="card list">${ts.map(taskRow).join("")}</div></section>`;
+  }
+  html += `</div>`;
+  if (!S.tasks.some(flt)) html += `<div class="empty">Здесь пусто</div>`;
+  return html + fab("task");
+}
+function editTask(t) {
+  const fields = [
+    {k: "title", l: "Задача"},
+    {k: "period", l: "Когда", t: "sel", o: PER.map(p => [p.key, p.label]), half: true},
+    {k: "who", l: "Кто делает", t: "sel", o: [["both", "Вместе"], ["p1", name1()], ["p2", name2()]], half: true},
+    {k: "catId", l: "Категория", t: "sel", o: [["", "—"], ...cats().map(c => [c.id, (c.emoji ? c.emoji + " " : "") + c.name])], half: true},
+    {k: "due", l: "Свой срок (необязательно)", t: "date", half: true},
+    {k: "note", l: "Заметка", t: "area"},
+    {k: "done", l: "Выполнено", t: "check"}
+  ];
+  const cur = periodNow();
+  openForm({title: t ? "Задача" : "Новая задача", fields, required: "title", vals: t || {period: PER.some(p => p.key === cur) ? cur : PER[0].key, who: "both"},
+    after: t && t.auto ? `<p class="mini">Закроется автоматически, когда в категории появится подрядчик со статусом «Договор» или «Оплачено».</p>` : "",
+    onSave: async dta => { dta.catId = dta.catId || null; if (t) await upd("tasks", t.id, dta); else await add("tasks", {...dta, order: 500}); },
+    onDelete: t ? () => del("tasks", t.id) : null});
+}
+
+/* ---------- MORE ---------- */
+function vMore() {
+  const item = (go, ic, t, s) => `<button class="row" data-go="${go}">${IC[ic]}<div class="grow"><div class="t">${t}</div><div class="s">${s}</div></div><span class="chev">›</span></button>`;
+  const G = gStats();
+  return head("Ещё") + `<div class="card list menu">
+    ${item("mood", "mood", "Атмосфера", `Мудборд и пожелания подрядчикам · ${S.mbphotos.length} ${plural(S.mbphotos.length, "идея", "идеи", "идей")}`)}
+    ${item("schedule", "clock", "Расписание дня", S.schedule.length ? `${S.schedule.length} ${plural(S.schedule.length, "пункт", "пункта", "пунктов")} · начало ${esc(schedSorted()[0].time || "")}` : "Тайминг свадебного дня")}
+    ${item("purchases", "bag", "Покупки", `${S.purchases.filter(p => p.status === "bought").length} из ${S.purchases.length} куплено`)}
+    ${item("guests", "guests", "Гости", `${G.total} в списке · ${G.yes} придут`)}
+    ${item("seating", "seat", "Рассадка", `${S.tables.length} ${plural(S.tables.length, "стол", "стола", "столов")} · ${G.seated} рассажено`)}
+    ${item("drinks", "glass", "Калькулятор напитков", "Сколько алкоголя и воды закупить")}
+    ${item("settings", "gear", "Настройки свадьбы", "Имена, дата, бюджет, доступ")}
+  </div>
+  <div class="card list menu" style="margin-top:12px"><button class="row" data-act="export">${IC.xls}<div class="grow"><div class="t">Выгрузить в Excel</div><div class="s">Бюджет, подрядчики, платежи, покупки, гости</div></div><span class="chev">›</span></button></div>`;
+}
+
+/* ---------- PURCHASES ---------- */
+function vPurchases() {
+  const f = ui.lf;
+  const list = S.purchases.filter(p => f === "all" || p.status === f).sort((a, b) => (a.status === "bought") - (b.status === "bought") || byOrder(a, b));
+  const total = sum(S.purchases, p => p.price), bought = sum(S.purchases.filter(p => p.status === "bought"), p => p.price);
+  return head("Покупки", "more") + `<div class="stats"><div class="stat"><div class="v">${rub(total)}</div><div class="l">всего по списку</div></div><div class="stat"><div class="v">${rub(bought)}</div><div class="l">уже куплено</div></div></div>
+  <div class="chips" style="margin-top:14px">${[["all", "Все"], ...Object.entries(PUR).map(([k, [l]]) => [k, l])].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-lf="${k}">${l}<b>${k === "all" ? S.purchases.length : S.purchases.filter(p => p.status === k).length}</b></button>`).join("")}</div>
+  <div class="card list" style="margin-top:8px">${list.length ? list.map(p => swipe("purchases", p.id, `<button class="row" data-pur="${esc(p.id)}"><div class="grow"><div class="t">${esc(p.title)}</div><div class="s">${pill(PUR, p.status)}<span>${esc(catLabel(p.catId))}</span>${p.who ? `<span>${esc(who(p.who))}</span>` : ""}</div></div><div class="r">${+p.price ? rub(p.price) : "—"}</div></button>`)).join("") : '<div class="empty">Список пуст</div>'}</div>` + fab("purchase");
+}
+function editPurchase(p) {
+  const fields = [{k: "title", l: "Что купить"}, {k: "catId", l: "Категория", t: "sel", o: cats().map(c => [c.id, (c.emoji ? c.emoji + " " : "") + c.name])},
+    {k: "status", l: "Статус", t: "sel", o: Object.entries(PUR).map(([k, [l]]) => [k, l]), half: true}, {k: "price", l: "Цена, ₽", t: "num", half: true},
+    {k: "who", l: "Кто покупает", t: "sel", o: [["both", "Вместе"], ["p1", name1()], ["p2", name2()]]}, {k: "link", l: "Ссылка", ph: "https://…"}, {k: "note", l: "Заметка", t: "area"}];
+  openForm({title: p ? "Покупка" : "Новая покупка", fields, required: "title", vals: p || {status: "need", who: "both", catId: cats().find(c => c.key === "other")?.id || cats()[0]?.id},
+    after: p && p.link ? `<p class="info">${linkHTML(p.link)}</p>` : "",
+    onSave: async d => { if (p) await upd("purchases", p.id, d); else await add("purchases", d); }, onDelete: p ? () => del("purchases", p.id) : null});
+}
+
+/* ---------- GUESTS ---------- */
+function gStats() {
+  const g = S.guests;
+  return {total: g.length, yes: g.filter(x => x.rsvp === "yes").length, no: g.filter(x => x.rsvp === "no").length, wait: g.filter(x => x.rsvp === "invited" || x.rsvp === "list" || !x.rsvp).length, seated: g.filter(x => x.tableId && S.tables.some(t => t.id === x.tableId)).length};
+}
+const sideLabel = s => s === "p1" ? "Со стороны " + name1() : s === "p2" ? "Со стороны " + name2() : "Общие";
+const tableById = id => S.tables.find(t => t.id === id);
+function vGuests() {
+  const G = gStats(), f = ui.gf;
+  const list = S.guests.filter(g => f === "all" || (f === "yes" || f === "no" ? g.rsvp === f : g.side === f)).sort((a, b) => String(a.name).localeCompare(String(b.name), "ru"));
+  return head("Гости", "more") + `<div class="stats s4"><div class="stat"><div class="v">${G.total}</div><div class="l">всего</div></div><div class="stat"><div class="v" style="color:var(--ok)">${G.yes}</div><div class="l">придут</div></div><div class="stat"><div class="v">${G.wait}</div><div class="l">ждём</div></div><div class="stat"><div class="v neg">${G.no}</div><div class="l">не придут</div></div></div>
+  ${+st().guests ? `<p class="mini" style="margin:8px 4px 0">План: ${+st().guests} гостей</p>` : ""}
+  <div style="margin-top:14px"><input class="search" id="gq" placeholder="Поиск по имени" value="${esc(ui.q)}"></div>
+  <div class="chips">${[["all", "Все"], ["p1", name1()], ["p2", name2()], ["both", "Общие"], ["yes", "Придут"], ["no", "Не придут"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-gf="${k}">${esc(l)}</button>`).join("")}</div>
+  <div class="btnrow wr" style="margin-top:8px"><button class="btn" data-act="bulkGuests">Добавить списком</button></div>
+  <div class="card list" style="margin-top:12px" id="glist">${list.length ? list.map(g => { const t = tableById(g.tableId); return swipe("guests", g.id, `<button class="row" data-guest="${esc(g.id)}" data-n="${esc(String(g.name).toLowerCase())}"><div class="grow"><div class="t">${esc(g.name)}</div><div class="s"><span>${esc(g.group || "")}</span><span>${esc(sideLabel(g.side))}</span>${t ? `<span>🪑 ${esc(t.name)}</span>` : ""}</div></div><div class="r">${pill(RSVP, g.rsvp || "list")}</div></button>`); }).join("") : '<div class="empty">Гостей пока нет. Добавьте по одному или списком.</div>'}</div>` + fab("guest");
+}
+function applyGuestSearch() { const q = ui.q.trim().toLowerCase(); $$("#glist [data-n]").forEach(el => { const w = el.closest(".sw") || el; w.style.display = !q || el.dataset.n.includes(q) ? "" : "none"; }); }
+const guestFields = () => [
+  {k: "name", l: "Имя и фамилия"},
+  {k: "side", l: "Сторона", t: "sel", o: [["p1", name1()], ["p2", name2()], ["both", "Общие"]], half: true},
+  {k: "group", l: "Группа", t: "sel", o: GROUPS.map(g => [g, g]), half: true},
+  {k: "rsvp", l: "Статус", t: "sel", o: Object.entries(RSVP).map(([k, [l]]) => [k, l]), half: true},
+  {k: "tableId", l: "Стол", t: "sel", o: [["", "Не рассажен"], ...[...S.tables].sort(byOrder).map(t => [t.id, t.name])], half: true},
+  {k: "phone", l: "Телефон", t: "tel"},
+  {k: "note", l: "Заметка (меню, аллергии, дети, трансфер)", t: "area"}
+];
+function editGuest(g) {
+  openForm({title: g ? "Гость" : "Новый гость", fields: guestFields(), required: "name", vals: g || {side: "both", group: "Друзья", rsvp: "list"},
+    onSave: async d => { d.tableId = d.tableId || null; if (g) await upd("guests", g.id, d); else await add("guests", d); }, onDelete: g ? () => del("guests", g.id) : null});
+}
+function bulkGuests() {
+  const fields = [{k: "names", l: "Один гость на строку", t: "area", ph: "Анна Петрова\nИван Петров\n…"}, {k: "side", l: "Сторона", t: "sel", o: [["p1", name1()], ["p2", name2()], ["both", "Общие"]], half: true}, {k: "group", l: "Группа", t: "sel", o: GROUPS.map(g => [g, g]), half: true}];
+  openForm({title: "Добавить списком", fields, vals: {side: "both", group: "Друзья"}, saveLabel: "Добавить", onSave: async d => {
+    const names = d.names.split(/\n|;/).map(s => s.trim()).filter(Boolean);
+    if (!names.length) throw toast("Введите хотя бы одно имя");
+    for (const n of names) await add("guests", {name: n, side: d.side, group: d.group, rsvp: "list", tableId: null});
+    toast(`Добавлено: ${names.length}`);
+  }});
+}
+
+/* ---------- SEATING ---------- */
+function tableSVG(t, n) {
+  const seats = Math.max(1, +t.seats || 1), r = 30, cx = 48, cy = 48;
+  let dots = "";
+  if (t.shape === "rect") {
+    const half = Math.ceil(seats / 2);
+    for (let i = 0; i < seats; i++) { const row = i < half ? 0 : 1, idx = row ? i - half : i, cnt = row ? seats - half : half; const x = 14 + (68 / (cnt + 1)) * (idx + 1); dots += `<circle cx="${x}" cy="${row ? 80 : 16}" r="6" fill="${i < n ? "var(--accent)" : "none"}" stroke="var(--accent)" stroke-width="1.5"/>`; }
+    return `<svg viewBox="0 0 96 96"><rect x="12" y="30" width="72" height="36" rx="6" fill="var(--soft)" stroke="var(--line)"/><text x="48" y="53" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">${n}/${seats}</text>${dots}</svg>`;
+  }
+  for (let i = 0; i < seats; i++) { const a = -Math.PI / 2 + i * 2 * Math.PI / seats; dots += `<circle cx="${cx + Math.cos(a) * (r + 10)}" cy="${cy + Math.sin(a) * (r + 10)}" r="5.5" fill="${i < n ? "var(--accent)" : "none"}" stroke="var(--accent)" stroke-width="1.5"/>`; }
+  return `<svg viewBox="0 0 96 96"><circle cx="${cx}" cy="${cy}" r="${r - 4}" fill="var(--soft)" stroke="var(--line)"/><text x="48" y="53" text-anchor="middle" font-size="13" font-weight="700" fill="var(--ink)">${n}/${seats}</text>${dots}</svg>`;
+}
+function vSeating() {
+  const G = gStats(), tables = [...S.tables].sort(byOrder);
+  const active = S.guests.filter(g => g.rsvp !== "no");
+  const un = active.filter(g => !tableById(g.tableId)).sort((a, b) => String(a.name).localeCompare(String(b.name), "ru"));
+  const seatsTotal = sum(tables, t => t.seats);
+  return head("Рассадка", "more") + `<div class="stats"><div class="stat"><div class="v">${G.seated} из ${active.length}</div><div class="l">гостей рассажено</div></div><div class="stat"><div class="v ${seatsTotal < active.length ? "neg" : ""}">${seatsTotal}</div><div class="l">мест за ${tables.length} ${plural(tables.length, "столом", "столами", "столами")}</div></div></div>
+  <h2>Без места · ${un.length}</h2>
+  <div class="card pad">${un.length ? un.map(g => `<button class="gch u" data-seat="${esc(g.id)}">${esc(g.name)}</button>`).join("") : '<span class="mini">Все гости рассажены 👌</span>'}</div>
+  <p class="mini" style="margin:8px 4px 0">Нажмите на гостя, чтобы посадить его за стол или пересадить.</p>
+  <h2>Столы <button class="lnk wr" data-act="table">+ Стол</button></h2>
+  <div class="tables">${tables.map(t => { const gs = S.guests.filter(g => g.tableId === t.id && g.rsvp !== "no"); const over = gs.length > (+t.seats || 0); return `<div class="tbl"><button class="tn" data-table="${esc(t.id)}"><span>${esc(t.name)}</span><small class="${over ? "neg" : ""}">${gs.length}/${+t.seats || 0} ✎</small></button>${tableSVG(t, gs.length)}<div>${gs.map(g => `<button class="gch" data-seat="${esc(g.id)}">${esc(g.name)}</button>`).join("")}</div></div>`; }).join("")}</div>
+  ${!tables.length ? '<div class="empty">Добавьте столы, чтобы начать рассадку</div>' : ""}`;
+}
+function seatGuest(gid) {
+  const g = S.guests.find(x => x.id === gid); if (!g) return;
+  if (!canWrite) return toast("Режим просмотра");
+  const tables = [...S.tables].sort(byOrder);
+  const bg = openSheet(g.name, `<p class="mini" style="margin:-6px 0 10px">Выберите стол</p><div class="card list">${tables.map(t => { const n = S.guests.filter(x => x.tableId === t.id && x.rsvp !== "no").length, free = (+t.seats || 0) - n; return `<button class="row" data-to="${esc(t.id)}"><div class="grow"><div class="t">${esc(t.name)}${g.tableId === t.id ? " ✓" : ""}</div><div class="s">${free > 0 ? `свободно ${free}` : `<span class="neg">мест нет</span>`}</div></div></button>`; }).join("")}</div>${g.tableId ? '<div class="btnrow"><button class="btn danger" data-to="">Убрать со стола</button></div>' : ""}`);
+  bg.querySelectorAll("[data-to]").forEach(b => b.onclick = async () => { try { await upd("guests", g.id, {tableId: b.dataset.to || null}); closeSheet(bg); } catch (e) {} });
+}
+function editTable(t) {
+  const fields = [{k: "name", l: "Название"}, {k: "seats", l: "Мест", t: "num", half: true}, {k: "shape", l: "Форма", t: "sel", o: [["round", "Круглый"], ["rect", "Прямоугольный"]], half: true}];
+  openForm({title: t ? "Стол" : "Новый стол", fields, required: "name", vals: t || {name: "Стол " + (S.tables.length + 1), seats: 10, shape: "round"},
+    onSave: async d => { d.seats = Math.max(1, Math.round(d.seats || 1)); if (t) await upd("tables", t.id, d); else await add("tables", {...d, order: S.tables.length + 1}); },
+    onDelete: t ? async () => { for (const g of S.guests.filter(g => g.tableId === t.id)) await upd("guests", g.id, {tableId: null}); await del("tables", t.id); } : null});
+}
+
+/* ---------- DRINKS ---------- */
+function vDrinks() {
+  const G = gStats(), n = G.yes || G.total - G.no || +st().guests || 60;
+  const inp = (id, l, v, s = "") => `<div class="f"><label for="${id}">${l}</label><input id="${id}" data-dr inputmode="decimal" value="${v}">${s}</div>`;
+  return head("Напитки", "more") + `<div class="card pad">
+    <div class="f2">${inp("d_g", "Гостей (взрослых)", n)}${inp("d_h", "Длительность, часов", 6)}</div>
+    <div class="f2">${inp("d_s", "Пьют крепкое, %", 40)}${inp("d_w", "Пьют вино, %", 60)}</div>
+    <label class="tog">Welcome и тост с игристым<input type="checkbox" id="d_c" data-dr checked></label>
+  </div>
+  <h2>Рекомендуем закупить</h2><div class="card list" id="drout"></div>
+  <p class="mini" style="margin:10px 4px">Расчёт ориентировочный: на 6 часов — 0,5 л крепкого на пьющего гостя, бутылка вина на двоих, бутылка игристого на троих, 1 л воды и 0,5 л сока или морса на гостя. Закладывайте запас 10% и уточните у площадки пробковый сбор.</p>`;
+}
+function calcDrinks() {
+  const g = num($("#d_g")?.value), h = Math.max(1, num($("#d_h")?.value) || 6), sp = num($("#d_s")?.value) / 100, wp = num($("#d_w")?.value) / 100, ch = $("#d_c")?.checked;
+  const k = h / 6;
+  const rows = [
+    ["🥂 Игристое", ch ? Math.ceil(g / 3) : 0, "бут. 0,75 л"],
+    ["🍷 Вино", Math.ceil(g * wp / 2 * k), "бут. 0,75 л", `белое ${Math.ceil(g * wp / 2 * k * 0.6)} · красное ${Math.ceil(g * wp / 2 * k) - Math.ceil(g * wp / 2 * k * 0.6)}`],
+    ["🥃 Крепкое", Math.ceil(g * sp * 0.5 * k / 0.5), "бут. 0,5 л"],
+    ["💧 Вода", Math.ceil(g * 1 * k / 1.5), "бут. 1,5 л"],
+    ["🧃 Соки, морсы", Math.ceil(g * 0.5 * k), "л"],
+    ["🧊 Лёд", Math.ceil(g * 0.3 * k), "кг"]
+  ];
+  const out = $("#drout"); if (!out) return;
+  out.innerHTML = rows.map(([t, v, u, s]) => `<div class="row"><div class="grow"><div class="t">${t}</div>${s ? `<div class="s">${s}</div>` : ""}</div><div class="r">${v} <small>${u}</small></div></div>`).join("");
+}
+
+/* ---------- SETTINGS ---------- */
+const roleName = r => r === "p1" ? name1() : r === "p2" ? name2() : "Только просмотр";
+function vSettings() {
+  const em = session && session.user ? session.user.email : "";
+  const viewers = members.filter(m => m.role === "viewer").length;
+  return head("Настройки", "more") + `<form id="setf" class="card pad" novalidate>
+    ${formHTML(settingsFields(), st())}
+    ${canWrite ? '<button class="btn pri w" type="submit">Сохранить</button>' : ""}
+  </form>
+  <h2>Ваш аккаунт</h2>
+  <div class="card pad"><p class="info"><span>Вы:</span> <b>${esc(roleName(me))}</b></p><p class="info"><span>Почта:</span> ${esc(em)}</p><div class="btnrow"><button class="btn" data-act="logout">Выйти из аккаунта</button></div></div>
+  ${canWrite ? `<h2>Пригласить</h2><div class="card pad" id="inv"><p class="mini" style="margin:0">Загружаем коды…</p></div>` : ""}
+  <h2>Участники</h2>
+  <div class="card list">${["p1", "p2"].map(r => `<div class="row"><div class="grow"><div class="t">${esc(roleName(r))}</div><div class="s">${r === "p1" ? "Жених" : "Невеста"} · может менять всё</div></div><div class="r">${members.some(m => m.role === r) ? '<span class="pill s-paid">в планере</span>' : '<span class="pill s-none">ещё не вошёл(ла)</span>'}</div></div>`).join("")}<div class="row"><div class="grow"><div class="t">Только просмотр</div><div class="s">Координатор, родители</div></div><div class="r">${viewers}</div></div></div>
+  <h2>Резервная копия</h2>
+  <div class="card pad"><p class="mini" style="margin:0 0 4px">Файл со всеми данными планера. Пригодится, чтобы сохранить копию или перенести данные.</p>
+  <div class="btnrow"><button class="btn" data-act="backup">Скачать копию</button>${canWrite ? '<label class="btn" style="cursor:pointer">Восстановить<input type="file" accept=".json,application/json" data-restore hidden></label>' : ""}</div></div>
+  <h2>Как поставить на iPhone</h2>
+  <div class="card pad" style="font-size:14px"><p style="margin:0">Откройте планер в Safari → кнопка «Поделиться» → «На экран „Домой“». Он будет открываться как обычное приложение и работать без интернета.</p></div>`;
+}
+const settingsFields = () => [
+  {k: "p1", l: "Жених", half: true}, {k: "p2", l: "Невеста", half: true},
+  {k: "date", l: "Дата свадьбы", t: "date", half: true}, {k: "guests", l: "Гостей (план)", t: "num", half: true},
+  {k: "budget", l: "Общий бюджет, ₽", t: "num"},
+  {k: "venue", l: "Площадка", half: true}, {k: "city", l: "Город", half: true}
+];
+let inviteCodes = null;
+async function loadInvites() {
+  const box = $("#inv"); if (!box) return;
+  if (!inviteCodes) {
+    const {data, error} = await sb.rpc("invite_codes", {w: W});
+    if (error || !data || !data[0]) { box.innerHTML = `<p class="mini" style="margin:0">${error && isNet(error) ? "Коды появятся, когда будет интернет" : "Не удалось загрузить коды"}</p>`; return; }
+    inviteCodes = data[0];
+  }
+  const url = location.origin + location.pathname;
+  const partner = me === "p1" ? name2() : name1();
+  const msg = code => `Наш свадебный планер: ${url}\nЗарегистрируйся по почте и введи код приглашения: ${code}`;
+  const b = $("#inv"); if (!b) return;
+  b.innerHTML = `<p class="info" style="margin-top:0"><span>${esc(partner)} — может менять всё:</span></p><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="big" style="letter-spacing:.12em" data-code-edit>${esc(inviteCodes.edit_code)}</div><button class="btn" data-copy="${esc(msg(inviteCodes.edit_code))}">Скопировать приглашение</button></div>
+  <p class="info" style="margin-top:14px"><span>Координатор и родители — только просмотр:</span></p><div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><div class="big" style="letter-spacing:.12em" data-code-view>${esc(inviteCodes.view_code)}</div><button class="btn" data-copy="${esc(msg(inviteCodes.view_code))}">Скопировать</button></div>
+  <p class="mini" style="margin:12px 0 0">Ссылка на планер: ${esc(url)}</p>`;
+}
+function download(data, fname, type) {
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([data], {type})); a.download = fname;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+  window.__lastDownload = {fname, data};
+}
+function backupJSON() {
+  const out = {app: "wedding-planner", v: 1, exportedAt: new Date().toISOString(), settings: S.settings};
+  COLLS.forEach(c => out[c] = S[c]);
+  download(JSON.stringify(out, null, 1), "Свадебный планер — копия " + iso(new Date()) + ".json", "application/json");
+}
+async function restoreJSON(file) {
+  let d;
+  try { d = JSON.parse(await file.text()); } catch (e) { return toast("Это не файл резервной копии"); }
+  if (!d || d.app !== "wedding-planner" || !d.settings) return toast("Это не файл резервной копии планера");
+  if (!navigator.onLine) return toast("Для восстановления нужен интернет");
+  if (S.settings && !(await ask("Все текущие данные планера будут заменены данными из файла.", "Заменить"))) return;
+  const ov = document.createElement("div"); ov.className = "prog"; ov.innerHTML = `<div><div class="big">Восстанавливаем…</div></div>`; document.body.appendChild(ov);
+  try {
+    const rows = [{wedding_id: W, coll: "meta", id: "settings", data: strip(d.settings)}];
+    COLLS.forEach(c => (d[c] || []).forEach(x => x && x.id && rows.push({wedding_id: W, coll: c, id: String(x.id), data: strip(x)})));
+    let r = await sb.from("docs").delete().eq("wedding_id", W); if (r.error) throw r.error;
+    for (let i = 0; i < rows.length; i += 200) { r = await sb.from("docs").upsert(rows.slice(i, i + 200)); if (r.error) throw r.error; }
+    outbox = []; saveOutbox(); await loadAll(); toast("Данные восстановлены"); location.hash = "home";
+  } catch (e) { console.warn(e); toast("Не удалось восстановить: " + authErr(e)); await loadAll(); }
+  ov.remove();
+}
+
+/* ---------- ONBOARDING ---------- */
+function renderOnboarding(app) {
+  const fields = [{k: "p1", l: "Жених", half: true, ph: "Имя"}, {k: "p2", l: "Невеста", half: true, ph: "Имя"}, {k: "date", l: "Дата свадьбы", t: "date", half: true}, {k: "guests", l: "Гостей", t: "num", half: true, ph: "60"}, {k: "budget", l: "Общий бюджет, ₽ (можно позже)", t: "num", ph: "1 500 000"}, {k: "venue", l: "Площадка", half: true, ph: "Если уже выбрали"}, {k: "city", l: "Город", half: true}];
+  app.innerHTML = `<form class="ob" novalidate><div style="text-align:center;font-size:44px;margin-top:20px">💍</div><h1 style="text-align:center">Свадебный планер</h1><p style="text-align:center">Пара минут — и у вас готовый план: категории, чек-лист по срокам, бюджет и рассадка. Всё можно поменять потом.</p>
+  ${formHTML(fields, {})}
+  <h2>Кого планируете нанять и что купить</h2>
+  ${TPL.categories.map(c => `<label class="tog">${esc(c.emoji)} ${esc(c.name)}<input type="checkbox" name="cat_${c.key}" checked></label>`).join("")}
+  <h2>Что будет на свадьбе</h2>
+  ${TPL.extras.map(x => `<label class="tog">${esc(x.label)}<input type="checkbox" name="ex_${x.key}" checked></label>`).join("")}
+  <button class="btn pri w" type="submit" style="margin-top:14px">Создать план</button>
+  <div style="text-align:center;margin-top:14px"><label class="btn" style="cursor:pointer">Восстановить из резервной копии<input type="file" accept=".json,application/json" data-restore hidden></label></div></form>`;
+  const form = $(".ob", app);
+  form.addEventListener("submit", async e => {
+    e.preventDefault();
+    const d = readForm(form, fields);
+    if (!d.date) { const el = form.querySelector('[name="date"]'); el.focus(); el.style.borderColor = "var(--danger)"; toast("Укажите дату свадьбы"); return; }
+    const catOn = TPL.categories.filter(c => form.querySelector(`[name="cat_${c.key}"]`).checked);
+    const exOn = new Set(TPL.extras.filter(x => form.querySelector(`[name="ex_${x.key}"]`).checked).map(x => x.key));
+    await createPlan(d, catOn, exOn);
+  });
+}
+async function createPlan(d, catOn, exOn) {
+  const ov = document.createElement("div"); ov.className = "prog"; ov.innerHTML = `<div><div class="big">Создаём план…</div><p class="mini" id="pg"></p></div>`; document.body.appendChild(ov);
+  const steps = catOn.length + TPL.tasks.length + TPL.purchases.length + 8; let n = 0;
+  const tick = () => { const el = $("#pg"); if (el) el.textContent = Math.min(100, Math.round(++n / steps * 100)) + "%"; };
+  try {
+    const keyId = {}, budget = +d.budget || 0, pctSum = sum(catOn, c => c.pct) || 1;
+    for (let i = 0; i < catOn.length; i++) { const c = catOn[i]; keyId[c.key] = await add("categories", {key: c.key, name: c.name, emoji: c.emoji, planned: budget ? Math.round(budget * c.pct / pctSum / 1000) * 1000 : 0, order: i}); tick(); }
+    let o = 0;
+    for (const [title, period, ref, whoK, auto] of TPL.tasks) {
+      if (ref && !keyId[ref] && !exOn.has(ref)) { tick(); continue; }
+      await add("tasks", {title, period, who: whoK, catId: keyId[ref] || null, tag: exOn.has(ref) ? ref : null, auto: auto && keyId[ref] ? 1 : 0, done: false, order: o++}); tick();
+    }
+    o = 0;
+    for (const [title, ref] of TPL.purchases) { if (!keyId[ref]) { tick(); continue; } await add("purchases", {title, catId: keyId[ref], status: "need", price: 0, who: "both", order: o++}); tick(); }
+    const g = +d.guests || 0, nt = Math.max(1, Math.ceil(g / 10));
+    await add("tables", {name: "Стол молодожёнов", seats: 2, shape: "rect", order: 0});
+    for (let i = 1; i <= Math.min(nt, 20); i++) { await add("tables", {name: "Стол " + i, seats: 10, shape: "round", order: i}); tick(); }
+    await saveSettings({...d, guests: g, budget, extras: [...exOn], createdAt: Date.now()});
+  } catch (e) { console.warn(e); toast("Не удалось создать план — попробуйте ещё раз"); }
+  ov.remove(); location.hash = "home"; schedule();
+}
+
+/* ---------- SWIPE TO DELETE ---------- */
+const swipe = (kind, id, inner) => canWrite ? `<div class="sw" data-sw="${kind}:${esc(id)}"><div class="swa"><button data-swdel aria-label="Удалить">Удалить</button></div><div class="swc">${inner}</div></div>` : inner;
+let swOpen = null, swDrag = null, swSuppress = false;
+function swClose(except) { if (swOpen && swOpen !== except) { swOpen.querySelector(".swc").style.transform = ""; swOpen.classList.remove("open"); swOpen = null; } }
+document.addEventListener("pointerdown", e => {
+  const c = e.target.closest(".swc"); if (!c || e.button > 0) { if (!e.target.closest(".swa")) swClose(); return; }
+  const sw = c.parentElement; swClose(sw);
+  swDrag = {sw, c, x: e.clientX, y: e.clientY, base: sw.classList.contains("open") ? -92 : 0, dir: null, dx: 0};
+});
+document.addEventListener("pointermove", e => {
+  const d = swDrag; if (!d) return;
+  const dx = e.clientX - d.x, dy = e.clientY - d.y;
+  if (!d.dir) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; d.dir = Math.abs(dx) > Math.abs(dy) ? "h" : "v"; if (d.dir === "h") d.c.style.transition = "none"; }
+  if (d.dir !== "h") return;
+  d.dx = dx; const t = Math.max(-120, Math.min(0, d.base + dx));
+  d.c.style.transform = `translateX(${t}px)`;
+});
+document.addEventListener("pointerup", () => {
+  const d = swDrag; swDrag = null; if (!d || d.dir !== "h") return;
+  d.c.style.transition = ""; swSuppress = true; setTimeout(() => swSuppress = false, 50);
+  if (d.base + d.dx < -46) { d.c.style.transform = "translateX(-92px)"; d.sw.classList.add("open"); swOpen = d.sw; }
+  else { d.c.style.transform = ""; d.sw.classList.remove("open"); if (swOpen === d.sw) swOpen = null; }
+});
+document.addEventListener("pointercancel", () => { if (swDrag) { swDrag.c.style.transition = ""; swDrag.c.style.transform = swDrag.base ? "translateX(-92px)" : ""; swDrag = null; } });
+document.addEventListener("click", e => { if (swSuppress) { e.stopPropagation(); e.preventDefault(); swSuppress = false; } }, true);
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-swdel]"); if (!b) return;
+  e.stopPropagation();
+  const [kind, id] = b.closest(".sw").dataset.sw.split(":");
+  swClose();
+  await deleteItem(kind, id);
+}, true);
+async function deleteItem(kind, id) {
+  if (kind === "vendors") { const v = vendorById(id); if (!v) return; const pays = S.payments.filter(p => p.vendorId === id); if (!(await ask(`«${v.name}»${pays.length ? ` и ${pays.length} ${plural(pays.length, "платёж", "платежа", "платежей")}` : ""} будут удалены.`))) return; for (const p of pays) await del("payments", p.id); await del("vendors", id); toast("Подрядчик удалён"); }
+  else if (kind === "categories") await deleteCategory(catById(id));
+  else if (kind === "expenses") { const x = S.expenses.find(e => e.id === id); if (!x || !(await ask(`Расход «${x.title || catLabel(x.catId)}» на ${rub(x.amount)} будет удалён.`))) return; await del("expenses", id); if (x.hasReceipt) delReceipt(id); toast("Расход удалён"); }
+  else if (kind === "purchases") { const x = S.purchases.find(e => e.id === id); if (!x || !(await ask(`«${x.title}» будет удалено из покупок.`))) return; await del("purchases", id); }
+  else if (kind === "guests") { const x = S.guests.find(e => e.id === id); if (!x || !(await ask(`${x.name} будет удалён(а) из списка гостей.`))) return; await del("guests", id); }
+  else if (kind === "schedule") { const x = S.schedule.find(e => e.id === id); if (!x || !(await ask(`«${x.title}» будет удалено из расписания.`))) return; await del("schedule", id); }
+  else if (kind === "mbcomments") { if (!(await ask("Комментарий будет удалён."))) return; await del("mbcomments", id); }
+  else if (kind === "tasks") { const x = S.tasks.find(e => e.id === id); if (!x || !(await ask(`Задача «${x.title}» будет удалена.`))) return; await del("tasks", id); }
+}
+async function deleteCategory(c) {
+  if (!c) return;
+  const vs = S.vendors.filter(v => v.catId === c.id), ps = S.purchases.filter(p => p.catId === c.id), es = S.expenses.filter(e => e.catId === c.id);
+  const other = cats().find(x => x.key === "other" && x.id !== c.id) || cats().find(x => x.id !== c.id);
+  const n = vs.length + ps.length + es.length;
+  const msg = n ? `В категории ${n} ${plural(n, "запись", "записи", "записей")} (подрядчики, покупки, расходы). Они переедут в «${other ? other.name : "Без категории"}».` : `Категория «${c.name}» будет удалена.`;
+  if (!(await ask(msg))) return;
+  const to = other ? other.id : null;
+  for (const v of vs) await upd("vendors", v.id, {catId: to});
+  for (const p of ps) await upd("purchases", p.id, {catId: to});
+  for (const x of es) await upd("expenses", x.id, {catId: to});
+  for (const t of S.tasks.filter(t => t.catId === c.id)) await upd("tasks", t.id, {catId: null, auto: 0});
+  await del("categories", c.id); closeAll(); toast("Категория удалена");
+}
+
+/* ---------- EXPENSES ---------- */
+const PAYER = {p1: () => name1(), p2: () => name2(), both: () => "Вместе"};
+function expenseRow(x) {
+  const c = catById(x.catId);
+  const sub = [c ? (c.emoji || "") + " " + c.name : "Без категории", x.date ? fmtShort(x.date) : "", PMETH[x.method], x.payer && PAYER[x.payer] ? PAYER[x.payer]() : ""].filter(Boolean).map(esc).join(" · ");
+  return swipe("expenses", x.id, `<button class="row" data-exp="${esc(x.id)}"><div class="grow"><div class="t">${esc(x.title || (c ? c.name : "Расход"))}${x.hasReceipt ? " 🧾" : ""}</div><div class="s">${sub}</div></div><div class="r">${rub(x.amount)}</div></button>`);
+}
+let lastCat = null;
+async function compressImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement("canvas"); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    let q = 0.7, out = cv.toDataURL("image/jpeg", q);
+    while (out.length > 350000 && q > 0.3) { q -= 0.15; out = cv.toDataURL("image/jpeg", q); }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+const receiptCache = {};
+async function getReceipt(id) {
+  if (receiptCache[id]) return receiptCache[id];
+  const {data, error} = await sb.from("docs").select("data").eq("wedding_id", W).eq("coll", "receipts").eq("id", id);
+  if (error || !data || !data[0]) return null;
+  return receiptCache[id] = data[0].data.img;
+}
+async function putReceipt(id, img) { const r = await sb.from("docs").upsert([{wedding_id: W, coll: "receipts", id, data: {img}}]); if (r.error) throw r.error; receiptCache[id] = img; }
+async function delReceipt(id) { delete receiptCache[id]; try { await sb.from("docs").delete().match({wedding_id: W, coll: "receipts", id}); } catch (e) {} }
+function editExpense(x, catId) {
+  const v = x ? {...x} : {date: iso(new Date()), catId: catId || lastCat || (cats().find(c => c.key === "other") || cats()[0] || {}).id, payer: me === "p1" || me === "p2" ? me : "both", method: "card"};
+  let newImg = null, removeImg = false;
+  const dis = canWrite ? "" : " disabled";
+  const bg = openSheet(x ? "Расход" : "Новый расход", `<form novalidate class="expf">
+    <div class="amt"><input name="amount" inputmode="decimal" data-money placeholder="0" value="${x ? esc(fmtMoneyStr(String(Math.round(+x.amount * 100) / 100).replace(".", ","))) : ""}" autocomplete="off"${dis}><span>₽</span></div>
+    <div class="f"><label>Категория</label><div class="chips ecats">${cats().map(c => `<button type="button" class="chip ${c.id === v.catId ? "on" : ""}" data-ec="${esc(c.id)}">${esc(c.emoji || "")} ${esc(c.name)}</button>`).join("")}</div></div>
+    ${formHTML([{k: "title", l: "На что", ph: "Например, пробный макияж"}, {k: "date", l: "Дата", t: "date", half: true}, {k: "method", l: "Способ", t: "sel", o: Object.entries(PMETH), half: true}], v)}
+    <div class="f"><label>Кто платил</label><div class="seg">${["p1", "p2", "both"].map(k => `<button type="button" class="${v.payer === k ? "on" : ""}" data-payer="${k}">${esc(PAYER[k]())}</button>`).join("")}</div></div>
+    <div class="f"><label>Чек</label><div class="rcpt"><div class="rprev"></div>${canWrite ? `<label class="btn" style="cursor:pointer">📷 ${x && x.hasReceipt ? "Заменить фото" : "Добавить фото чека"}<input type="file" accept="image/*" data-rfile hidden></label>` : ""}</div></div>
+    ${formHTML([{k: "note", l: "Заметка", t: "area", ph: "Подробности, номер заказа…"}], v)}
+    <p class="mini" style="margin:-4px 4px 10px">Оплаты подрядчикам (задатки, доплаты) удобнее вносить в карточке подрядчика.</p>
+    ${canWrite ? `<div class="btnrow">${x ? '<button type="button" class="btn danger" data-del>Удалить</button>' : ""}<button type="submit" class="btn pri" data-save>Сохранить</button></div>` : ""}
+  </form>`);
+  const f = bg.querySelector("form"), prev = bg.querySelector(".rprev");
+  const showImg = src => { prev.innerHTML = src ? `<img src="${src}" alt="Чек"><button type="button" class="x" data-rdel aria-label="Убрать чек">✕</button>` : ""; const rd = prev.querySelector("[data-rdel]"); if (rd) rd.onclick = () => { newImg = null; removeImg = true; showImg(null); }; if (!canWrite && rd) rd.remove(); };
+  if (x && x.hasReceipt) { prev.innerHTML = '<span class="mini">Загружаем чек…</span>'; getReceipt(x.id).then(src => { if (!newImg && !removeImg) showImg(src); if (!src) prev.innerHTML = '<span class="mini">Чек недоступен без интернета</span>'; }); }
+  if (!x) setTimeout(() => f.amount.focus(), 250);
+  bg.querySelectorAll("[data-ec]").forEach(b => b.onclick = () => { if (!canWrite) return; v.catId = b.dataset.ec; bg.querySelectorAll("[data-ec]").forEach(o => o.classList.toggle("on", o === b)); });
+  bg.querySelectorAll("[data-payer]").forEach(b => b.onclick = () => { if (!canWrite) return; v.payer = b.dataset.payer; bg.querySelectorAll("[data-payer]").forEach(o => o.classList.toggle("on", o === b)); });
+  const rf = bg.querySelector("[data-rfile]");
+  if (rf) rf.onchange = async () => { const file = rf.files[0]; rf.value = ""; if (!file) return; prev.innerHTML = '<span class="mini">Обрабатываем фото…</span>'; try { newImg = await compressImage(file); removeImg = false; showImg(newImg); } catch (e) { prev.innerHTML = ""; toast("Не удалось прочитать фото"); } };
+  const dl = bg.querySelector("[data-del]");
+  if (dl) dl.onclick = async () => { if (await ask(`Расход на ${rub(x.amount)} будет удалён.`)) { await del("expenses", x.id); if (x.hasReceipt) delReceipt(x.id); closeSheet(bg); } };
+  f.addEventListener("submit", async e => {
+    e.preventDefault(); if (!canWrite) return;
+    const amount = num(f.amount.value);
+    if (!amount) { f.amount.focus(); f.amount.parentElement.style.borderColor = "var(--danger)"; return; }
+    if (newImg && !navigator.onLine) { toast("Чтобы сохранить фото чека, нужен интернет"); return; }
+    const b = f.querySelector("[data-save]"); b.disabled = true;
+    const d = {amount, catId: v.catId || null, payer: v.payer, title: f.title.value.trim(), date: f.date.value, method: f.method.value, note: f.note.value.trim(), hasReceipt: newImg ? true : removeImg ? false : !!(x && x.hasReceipt)};
+    try {
+      let id = x && x.id;
+      if (x) await upd("expenses", x.id, d); else id = await add("expenses", d);
+      lastCat = d.catId;
+      if (newImg) { try { await putReceipt(id, newImg); } catch (err) { await upd("expenses", id, {hasReceipt: false}); toast("Расход сохранён, но фото чека не загрузилось"); } }
+      else if (removeImg && x) delReceipt(x.id);
+      closeSheet(bg); if (!x) toast(`Расход ${rub(amount)} добавлен`);
+    } catch (err) { console.warn(err); b.disabled = false; }
+  });
+}
+function showCategory(c) {
+  if (!c) return;
+  const x = catStats(c);
+  const vs = S.vendors.filter(v => v.catId === c.id && v.status !== "rejected"), ps = S.purchases.filter(p => p.catId === c.id), es = S.expenses.filter(e => e.catId === c.id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const bg = openSheet((c.emoji ? c.emoji + " " : "") + c.name, `
+    <div class="kv"><div><span>План</span><b>${rub(x.planned)}</b></div><div><span>Факт</span><b class="${x.planned && x.contract > x.planned ? "neg" : ""}">${rub(x.contract)}</b></div><div><span>Оплачено</span><b>${rub(x.paid)}</b></div></div>
+    ${vs.length ? `<h2>Подрядчики</h2><div class="card list">${vs.map(v => `<div class="row"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}</div></div><div class="r">${+v.price ? rub(v.price) : "—"}${isSel(v) ? `<small>оплачено ${rub(vPaid(v))}</small>` : ""}</div></div>`).join("")}</div>` : ""}
+    ${ps.length ? `<h2>Покупки</h2><div class="card list">${ps.map(p => `<div class="row"><div class="grow"><div class="t">${esc(p.title)}</div><div class="s">${pill(PUR, p.status)}</div></div><div class="r">${+p.price ? rub(p.price) : "—"}</div></div>`).join("")}</div>` : ""}
+    <h2>Расходы</h2><div class="card list">${es.length ? es.map(e => `<div class="row"><div class="grow"><div class="t">${esc(e.title || "Расход")}${e.hasReceipt ? " 🧾" : ""}</div><div class="s">${esc([e.date ? fmtShort(e.date) : "", PAYER[e.payer] ? PAYER[e.payer]() : ""].filter(Boolean).join(" · "))}</div></div><div class="r">${rub(e.amount)}</div></div>`).join("") : '<div class="empty">Расходов пока нет</div>'}</div>
+    <div class="wr"><button class="btn pri w" data-addexp style="margin-top:14px">＋ Расход в эту категорию</button>
+    <div class="btnrow"><button class="btn" data-edit>✎ Изменить</button><button class="btn danger" data-delc>Удалить категорию</button></div></div>`);
+  bg.querySelector("[data-addexp]").onclick = () => { closeSheet(bg); editExpense(null, c.id); };
+  bg.querySelector("[data-edit]").onclick = () => { closeSheet(bg); editCategory(c); };
+  bg.querySelector("[data-delc]").onclick = () => deleteCategory(c);
+}
+
+/* ---------- MOOD BOARD ---------- */
+const BOARDS = [
+  {key: "decor", name: "Декор и флористика", emoji: "💐", cat: "decor"},
+  {key: "photo", name: "Фотограф", emoji: "📷", cat: "photo"},
+  {key: "video", name: "Видео", emoji: "🎬", cat: "video"},
+  {key: "cake", name: "Торт", emoji: "🎂", cat: "cake"},
+  {key: "print", name: "Полиграфия", emoji: "✉️", cat: "print"},
+  {key: "ideas", name: "Идеи и фишки", emoji: "✨", cat: null},
+  {key: "host", name: "Ведущий и DJ", emoji: "🎤", cat: "host"}
+];
+const CTYPE = {wish: ["Пожелание", "s-contract"], question: ["Вопрос", "s-talks"], note: ["Заметка", "s-none"]};
+const boardByKey = k => BOARDS.find(b => b.key === k);
+const boardVendor = b => { if (!b.cat) return null; const c = S.categories.find(x => x.key === b.cat); return c ? S.vendors.find(v => v.catId === c.id && isSel(v)) : null; };
+const thumbs = {}, fulls = {};
+async function loadThumbs(ids) {
+  const need = ids.filter(id => !(id in thumbs)); if (!need.length || !sb) return;
+  for (let i = 0; i < need.length; i += 40) {
+    const {data, error} = await sb.from("docs").select("id,data").eq("wedding_id", W).eq("coll", "mbthumb").in("id", need.slice(i, i + 40));
+    if (error) { if (!isNet(error)) console.warn(error); return; }
+    for (const r of data) thumbs[r.id] = r.data.img;
+    for (const id of need.slice(i, i + 40)) if (!(id in thumbs)) thumbs[id] = null;
+  }
+  schedule();
+}
+async function loadFull(id) {
+  if (fulls[id]) return fulls[id];
+  const {data} = await sb.from("docs").select("data").eq("wedding_id", W).eq("coll", "mbimg").eq("id", id);
+  return data && data[0] ? (fulls[id] = data[0].data.img) : null;
+}
+async function resizeTo(file, max, q0, limit) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, max / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement("canvas"); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    let q = q0, out = cv.toDataURL("image/jpeg", q);
+    while (out.length > limit && q > 0.3) { q -= 0.1; out = cv.toDataURL("image/jpeg", q); }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+async function uploadMoodPhotos(board, files) {
+  if (!navigator.onLine) return toast("Чтобы загрузить фото, нужен интернет");
+  const ov = document.createElement("div"); ov.className = "prog"; ov.innerHTML = `<div><div class="big">Загружаем фото…</div><p class="mini" id="mbp"></p></div>`; document.body.appendChild(ov);
+  let ok = 0;
+  for (let i = 0; i < files.length; i++) {
+    const el = $("#mbp"); if (el) el.textContent = `${i + 1} из ${files.length}`;
+    try {
+      const full = await resizeTo(files[i], 1600, 0.75, 450000), thumb = await resizeTo(files[i], 420, 0.65, 45000);
+      const id = uid();
+      let r = await sb.from("docs").upsert([{wedding_id: W, coll: "mbimg", id, data: {img: full}}, {wedding_id: W, coll: "mbthumb", id, data: {img: thumb}}]);
+      if (r.error) throw r.error;
+      thumbs[id] = thumb; fulls[id] = full;
+      queue({t: "up", coll: "mbphotos", id, data: {board, kind: "photo", caption: "", createdAt: Date.now() + i, by: me}});
+      ok++;
+    } catch (e) { console.warn(e); }
+  }
+  ov.remove();
+  toast(ok === files.length ? `Добавлено фото: ${ok}` : `Загружено ${ok} из ${files.length}. Остальные не удалось обработать`);
+}
+async function deleteMoodPhoto(p) {
+  await del("mbphotos", p.id);
+  if (p.kind === "photo") { delete thumbs[p.id]; delete fulls[p.id]; try { await sb.from("docs").delete().match({wedding_id: W, coll: "mbthumb", id: p.id}); await sb.from("docs").delete().match({wedding_id: W, coll: "mbimg", id: p.id}); } catch (e) {} }
+}
+const linkHost = u => { try { return new URL(/^https?:/i.test(u) ? u : "https://" + u).hostname.replace(/^www\./, ""); } catch (e) { return u; } };
+function vMood() {
+  const html = BOARDS.map(b => {
+    const ph = S.mbphotos.filter(p => p.board === b.key).sort((a, b2) => (b2.createdAt || 0) - (a.createdAt || 0));
+    const cm = S.mbcomments.filter(c => c.board === b.key), open = cm.filter(c => c.type === "question" && !c.resolved).length;
+    const covers = ph.filter(p => p.kind === "photo").slice(0, 3);
+    const v = boardVendor(b);
+    return `<button class="mbcard" data-go="mood-${b.key}"><div class="mbcov">${covers.length ? covers.map(p => thumbs[p.id] ? `<img src="${thumbs[p.id]}" alt="">` : `<i></i>`).join("") : `<span>${b.emoji}</span>`}</div><div class="mbinfo"><div class="t">${b.emoji} ${esc(b.name)}</div><div class="s">${ph.length} ${plural(ph.length, "идея", "идеи", "идей")} · ${cm.length} ${plural(cm.length, "комментарий", "комментария", "комментариев")}${open ? ` · <b class="neg">${open} ${plural(open, "вопрос", "вопроса", "вопросов")}</b>` : ""}</div>${v ? `<div class="s">✓ ${esc(v.name)}</div>` : ""}</div></button>`;
+  }).join("");
+  setTimeout(() => loadThumbs(S.mbphotos.filter(p => p.kind === "photo").map(p => p.id)), 0);
+  return head("Атмосфера", "more") + `<p class="mini" style="margin:-6px 4px 14px">Собирайте референсы и пожелания по каждому подрядчику — потом одной кнопкой отправите им.</p><div class="mbgrid">${html}</div>`;
+}
+function vBoard(key) {
+  const b = boardByKey(key); if (!b) return vMood();
+  const ph = S.mbphotos.filter(p => p.board === key).sort((a, c) => (c.createdAt || 0) - (a.createdAt || 0));
+  const cm = S.mbcomments.filter(c => c.board === key).sort((a, c) => (a.createdAt || 0) - (c.createdAt || 0));
+  const v = boardVendor(b);
+  setTimeout(() => loadThumbs(ph.filter(p => p.kind === "photo").map(p => p.id)), 0);
+  return head(b.emoji + " " + b.name, "mood") + `
+  ${v ? `<div class="banner" style="display:flex;justify-content:space-between;gap:10px;align-items:center"><span>Подрядчик: <b>${esc(v.name)}</b></span><button class="lnk" data-vendor="${esc(v.id)}" style="color:var(--accent);font-weight:700">Открыть</button></div>` : b.cat ? `<div class="banner">Подрядчик пока не выбран — референсы помогут при выборе.</div>` : ""}
+  <h2>Референсы · ${ph.length}</h2>
+  <div class="mbphotos">${ph.map(p => p.kind === "link"
+    ? `<button class="mbph mblink" data-mbp="${esc(p.id)}"><span>🔗</span><b>${esc(linkHost(p.url))}</b>${p.caption ? `<small>${esc(p.caption)}</small>` : ""}</button>`
+    : `<button class="mbph" data-mbp="${esc(p.id)}">${thumbs[p.id] ? `<img src="${thumbs[p.id]}" alt="${esc(p.caption || "")}" loading="lazy">` : `<i class="skel" style="margin:0;height:100%"></i>`}${p.caption ? `<small>${esc(p.caption)}</small>` : ""}</button>`).join("")}
+    ${canWrite ? `<label class="mbph mbadd wr">＋<span>Фото</span><input type="file" accept="image/*" multiple data-mbfile="${key}" hidden></label><button class="mbph mbadd wr" data-mblink="${key}">🔗<span>Ссылка</span></button>` : ""}
+  </div>
+  ${!ph.length && !canWrite ? '<div class="empty">Пока пусто</div>' : ""}
+  <h2>Пожелания и вопросы <button class="lnk" data-mbcopy="${key}">📋 Скопировать для подрядчика</button></h2>
+  <div class="card list">${cm.length ? cm.map(c => swipe("mbcomments", c.id, `<div class="row cm ${c.resolved ? "done" : ""}">${c.type === "question" ? `<button class="ck ${c.resolved ? "on" : ""}" data-cmres="${esc(c.id)}" aria-label="Решено"></button>` : ""}<div class="grow"><div class="t" style="white-space:pre-wrap;font-weight:500">${esc(c.text)}</div><div class="s">${pill(CTYPE, c.type || "note")}${c.by === "p1" || c.by === "p2" ? `<span>${esc(who(c.by))}</span>` : ""}<span>${esc(fmtShort(new Date(c.createdAt || Date.now())))}</span>${c.type === "question" && c.resolved ? '<span class="pill s-paid">решено</span>' : ""}</div></div></div>`)).join("") : '<div class="empty">Напишите, что важно: цвета, настроение, что точно не надо, вопросы по смете…</div>'}</div>
+  ${canWrite ? `<form class="cmform card pad wr" data-cmform="${key}" novalidate style="margin-top:12px">
+    <div class="seg" style="margin-bottom:10px">${Object.entries(CTYPE).map(([k, [l]], i) => `<button type="button" class="${i === 0 ? "on" : ""}" data-cmtype="${k}">${l}</button>`).join("")}</div>
+    <div class="f" style="margin:0"><textarea name="text" placeholder="Например: хотим больше зелени и пионы, без роз" style="min-height:70px"></textarea></div>
+    <button class="btn pri w" type="submit" style="margin-top:10px">Добавить</button></form>` : ""}`;
+}
+function showMoodPhoto(id) {
+  const p = S.mbphotos.find(x => x.id === id); if (!p) return;
+  const bg = openSheet(p.kind === "link" ? "Ссылка" : "Референс", `
+    ${p.kind === "link" ? `<p class="info">${linkHTML(p.url)}</p>` : `<div class="mbfull"><span class="mini">Загружаем…</span></div>`}
+    ${canWrite ? `<div class="f" style="margin-top:12px"><label>Подпись</label><input name="cap" value="${esc(p.caption || "")}" placeholder="Что нравится в этом варианте"></div>
+    <div class="btnrow"><button class="btn danger" data-del>Удалить</button><button class="btn pri" data-save>Сохранить</button></div>` : p.caption ? `<p class="info">${esc(p.caption)}</p>` : ""}`);
+  if (p.kind === "photo") loadFull(id).then(src => { const box = bg.querySelector(".mbfull"); if (box) box.innerHTML = src ? `<img src="${src}" alt="">` : '<span class="mini">Фото недоступно без интернета</span>'; });
+  const sv = bg.querySelector("[data-save]"); if (sv) sv.onclick = async () => { await upd("mbphotos", id, {caption: bg.querySelector('[name="cap"]').value.trim()}); closeSheet(bg); };
+  const dl = bg.querySelector("[data-del]"); if (dl) dl.onclick = async () => { if (await ask("Референс будет удалён.")) { await deleteMoodPhoto(p); closeSheet(bg); } };
+}
+function addMoodLink(board) {
+  openForm({title: "Ссылка на референс", fields: [{k: "url", l: "Ссылка (Pinterest, Instagram, сайт)", ph: "https://pinterest.com/…"}, {k: "caption", l: "Подпись", ph: "Что нравится"}], required: "url", saveLabel: "Добавить",
+    onSave: async d => { await add("mbphotos", {board, kind: "link", url: d.url, caption: d.caption}); }});
+}
+function boardText(key) {
+  const b = boardByKey(key), cm = S.mbcomments.filter(c => c.board === key).sort((a, c) => (a.createdAt || 0) - (c.createdAt || 0));
+  const wishes = cm.filter(c => c.type === "wish"), qs = cm.filter(c => c.type === "question" && !c.resolved);
+  const links = S.mbphotos.filter(p => p.board === key && p.kind === "link");
+  let t = `${b.name} — ${name1()} и ${name2()}, свадьба ${st().date ? fmtD(st().date, true) : ""}${st().venue ? ", " + st().venue : ""}\n`;
+  if (wishes.length) t += `\nНаши пожелания:\n${wishes.map(c => "• " + c.text).join("\n")}\n`;
+  if (qs.length) t += `\nВопросы:\n${qs.map((c, i) => `${i + 1}. ${c.text}`).join("\n")}\n`;
+  if (links.length) t += `\nРеференсы:\n${links.map(p => "• " + p.url + (p.caption ? " — " + p.caption : "")).join("\n")}\n`;
+  if (!wishes.length && !qs.length && !links.length) return "";
+  return t.trim();
+}
+
+/* ---------- SCHEDULE ---------- */
+const SCHED_TPL = [
+  ["08:00", "Сборы невесты", "Визажист, стилист, фотограф", "Номер / дом"],
+  ["10:30", "Сборы жениха", "Фотограф", ""],
+  ["12:00", "Первая встреча и фотосессия пары", "Фотограф, рилсмейкер", ""],
+  ["14:30", "Сбор гостей, welcome-фуршет", "Координатор", "Улица у площадки"],
+  ["15:30", "Выездная регистрация", "Координатор, ведущий", "Улица у площадки"],
+  ["16:00", "Поздравления и общее фото", "Фотограф", ""],
+  ["16:30", "Вход пары, начало банкета", "Ведущий, DJ", "Зал"],
+  ["17:00", "Первый блок программы", "Ведущий", "Зал"],
+  ["18:30", "Горячее", "Площадка", "Зал"],
+  ["19:00", "Живая музыка", "Кавер-группа", "Зал"],
+  ["20:30", "Танец молодожёнов", "DJ", "Зал"],
+  ["21:00", "Торт", "Кондитер, площадка", "Зал"],
+  ["22:00", "Финал вечера", "Ведущий", ""],
+  ["23:00", "Окончание, трансфер гостей", "Координатор", ""]
+];
+const schedSorted = () => [...S.schedule].sort((a, b) => (a.time || "99").localeCompare(b.time || "99") || (a.createdAt || 0) - (b.createdAt || 0));
+function vSchedule() {
+  const items = schedSorted();
+  return head("Расписание", "more") + `
+  <p class="mini" style="margin:-6px 4px 14px">Тайминг свадебного дня${st().date ? " · " + esc(fmtD(st().date, true)) : ""}${st().venue ? " · " + esc(st().venue) : ""}</p>
+  ${items.length ? `<div class="card list tl">${items.map(x => swipe("schedule", x.id, `<button class="row" data-sch="${esc(x.id)}"><div class="tm">${esc(x.time || "—")}</div><div class="grow"><div class="t">${esc(x.title)}</div><div class="s">${[x.place ? "📍 " + x.place : "", x.who ? "👤 " + x.who : ""].filter(Boolean).map(esc).join(" · ")}</div>${x.note ? `<div class="s">${esc(x.note)}</div>` : ""}</div></button>`)).join("")}<button class="row addrow wr" data-act="schedItem">＋ Добавить пункт</button></div>
+  <div class="btnrow"><button class="btn" data-act="schedCopy">📋 Скопировать тайминг</button></div>`
+  : `<div class="card pad" style="text-align:center"><p style="margin:4px 0 14px">Расписание пока пустое.</p>${canWrite ? `<button class="btn pri w" data-act="schedTpl">Заполнить типовым таймингом</button><div class="btnrow"><button class="btn w" data-act="schedItem">＋ Добавить пункт вручную</button></div>` : ""}</div>`}` + (items.length ? fab("schedItem") : "");
+}
+function editSched(x) {
+  const fields = [{k: "time", l: "Время", ph: "15:30", half: true}, {k: "place", l: "Где", ph: "Зал, улица…", half: true}, {k: "title", l: "Что происходит"}, {k: "who", l: "Кто отвечает", ph: "Координатор, ведущий…"}, {k: "note", l: "Заметка", t: "area"}];
+  openForm({title: x ? "Пункт расписания" : "Новый пункт", fields, required: "title", vals: x || {},
+    onSave: async d => { const m = /^(\d{1,2})[:.\s]?(\d{2})$/.exec(d.time.trim()); if (d.time && (!m || +m[1] > 23 || +m[2] > 59)) throw toast("Время в формате 15:30"); if (m) d.time = m[1].padStart(2, "0") + ":" + m[2]; if (x) await upd("schedule", x.id, d); else await add("schedule", d); },
+    onDelete: x ? () => del("schedule", x.id) : null});
+  const t = sheetStack[sheetStack.length - 1]; const ti = t && t.querySelector('[name="time"]'); if (ti) ti.setAttribute("inputmode", "numeric");
+}
+const schedText = () => `Тайминг свадьбы ${name1()} и ${name2()}${st().date ? " — " + fmtD(st().date, true) : ""}${st().venue ? ", " + st().venue : ""}\n\n` + schedSorted().map(x => `${x.time || "--:--"}  ${x.title}${x.place ? " (" + x.place + ")" : ""}${x.who ? " — " + x.who : ""}`).join("\n");
+function copyText(t, okMsg) { navigator.clipboard.writeText(t).then(() => toast(okMsg || "Скопировано"), () => { openSheet("Текст для копирования", `<textarea style="width:100%;min-height:260px;font:inherit;padding:10px;border-radius:12px;border:1px solid var(--line);background:var(--card)">${esc(t)}</textarea>`); }); }
+
+/* ---------- EXPORT ---------- */
+async function exportXlsx() {
+  if (!window.XLSX) return toast("Модуль Excel ещё загружается — попробуйте через пару секунд");
+  const T = totals(), wb = XLSX.utils.book_new();
+  const sheet = (name, rows, widths) => { const ws = XLSX.utils.aoa_to_sheet(rows); if (widths) ws["!cols"] = widths.map(w => ({wch: w})); XLSX.utils.book_append_sheet(wb, ws, name); };
+  sheet("Бюджет", [["Категория", "План, ₽", "По договорам, ₽", "Оплачено, ₽", "Осталось оплатить, ₽"], ...cats().map(c => { const x = catStats(c); return [c.name, x.planned, x.contract, x.paid, x.contract - x.paid]; }), [], ["Итого", T.planned, T.contract, T.paid, T.toPay], ["Общий бюджет", T.budget], ["Свободно", T.free]], [26, 12, 16, 14, 18]);
+  sheet("Подрядчики", [["Категория", "Подрядчик", "Статус", "Стоимость, ₽", "Оплачено, ₽", "Остаток, ₽", "Контакт", "Телефон", "Ссылка", "Договор", "Заметки"], ...S.vendors.map(v => [catById(v.catId)?.name || "", v.name, VST[v.status]?.[0] || "", +v.price || 0, vPaid(v), (+v.price || 0) - vPaid(v), v.contact || "", v.phone || "", v.link || "", v.contract || "", v.notes || ""])], [20, 24, 12, 13, 13, 13, 16, 16, 24, 24, 30]);
+  sheet("Платежи", [["Дата", "Подрядчик", "Тип", "Способ", "Сумма, ₽", "Статус", "Комментарий"], ...[...S.payments].sort((a, b) => (a.date || "") < (b.date || "") ? -1 : 1).map(p => [p.date || "", vendorById(p.vendorId)?.name || "", PTYPE[p.type] || "", PMETH[p.method] || "", +p.amount || 0, p.status === "paid" ? "Оплачено" : "Запланировано", p.note || ""])], [12, 24, 14, 14, 12, 14, 30]);
+  sheet("Тайминг", [["Время", "Что", "Где", "Кто отвечает", "Заметка"], ...schedSorted().map(x => [x.time || "", x.title, x.place || "", x.who || "", x.note || ""])], [8, 36, 20, 26, 30]);
+  sheet("Расходы", [["Дата", "На что", "Категория", "Сумма, ₽", "Кто платил", "Способ", "Чек", "Заметка"], ...[...S.expenses].sort((a, b) => (a.date || "").localeCompare(b.date || "")).map(x => [x.date || "", x.title || "", catById(x.catId)?.name || "", +x.amount || 0, PAYER[x.payer] ? PAYER[x.payer]() : "", PMETH[x.method] || "", x.hasReceipt ? "есть" : "", x.note || ""])], [12, 28, 20, 12, 12, 14, 6, 30]);
+  sheet("Покупки", [["Покупка", "Категория", "Статус", "Цена, ₽", "Кто", "Ссылка"], ...S.purchases.map(p => [p.title, catById(p.catId)?.name || "", PUR[p.status]?.[0] || "", +p.price || 0, who(p.who), p.link || ""])], [28, 20, 12, 12, 12, 30]);
+  sheet("Гости", [["Имя", "Сторона", "Группа", "Статус", "Стол", "Телефон", "Заметка"], ...[...S.guests].sort((a, b) => String(a.name).localeCompare(String(b.name), "ru")).map(g => [g.name, sideLabel(g.side), g.group || "", RSVP[g.rsvp]?.[0] || "", tableById(g.tableId)?.name || "", g.phone || "", g.note || ""])], [26, 22, 12, 12, 16, 16, 30]);
+  sheet("Задачи", [["Срок", "Задача", "Кто", "Статус"], ...PER.flatMap(p => S.tasks.filter(t => t.period === p.key).sort(byOrder).map(t => [p.label, t.title, who(t.who), isDone(t) ? "Готово" : "Открыта"]))], [18, 46, 12, 10]);
+  const buf = XLSX.write(wb, {type: "array", bookType: "xlsx"});
+  const fname = "Свадебный планер " + (st().date || iso(new Date())) + ".xlsx";
+  download(buf, fname, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  const t = e.target.closest("[data-copy],[data-go],[data-act],[data-vendor],[data-addvendor],[data-addcand],[data-payment],[data-vf],[data-tf],[data-pf],[data-gf],[data-lf],[data-tick],[data-task],[data-cat],[data-exp],[data-mbp],[data-mblink],[data-mbcopy],[data-cmres],[data-cmtype],[data-sch],[data-pur],[data-guest],[data-seat],[data-table]");
+  if (!t || t.closest(".sheet")) return;
+  const ds = t.dataset;
+  if (ds.copy) { navigator.clipboard.writeText(ds.copy).then(() => toast("Скопировано — отправьте в мессенджер"), () => toast("Не удалось скопировать")); return; }
+  if (ds.go) return go(ds.go);
+  if (ds.vf) { ui.vf = ds.vf; return render(); }
+  if (ds.tf) { ui.tf = ds.tf; tfTouched = true; return render(); }
+  if (ds.pf) { ui.pf = ds.pf; return render(); }
+  if (ds.gf) { ui.gf = ds.gf; return render(); }
+  if (ds.lf) { ui.lf = ds.lf; return render(); }
+  if (ds.vendor) return showVendor(ds.vendor);
+  if (ds.addvendor) return editVendor(null, ds.addvendor);
+  if (ds.addcand) return addCandidate(ds.addcand);
+  if (ds.payment) { const p = S.payments.find(x => x.id === ds.payment); return p && editPayment(p, p.vendorId); }
+  if (ds.tick) {
+    const tk = S.tasks.find(x => x.id === ds.tick); if (!tk) return;
+    if (!canWrite) return toast("Режим просмотра");
+    if (autoDone(tk) && !tk.done) return toast("Закрыта автоматически: договор уже есть");
+    upd("tasks", tk.id, {done: !tk.done}).catch(() => {}); return;
+  }
+  if (ds.task) return editTask(S.tasks.find(x => x.id === ds.task));
+  if (ds.cat) return showCategory(catById(ds.cat));
+  if (ds.exp) return editExpense(S.expenses.find(x => x.id === ds.exp));
+  if (ds.mbp) return showMoodPhoto(ds.mbp);
+  if (ds.mblink) return addMoodLink(ds.mblink);
+  if (ds.mbcopy) { const t = boardText(ds.mbcopy); return t ? copyText(t, "Скопировано — отправьте подрядчику") : toast("Добавьте пожелания или вопросы"); }
+  if (ds.cmres) { const c = S.mbcomments.find(x => x.id === ds.cmres); if (c && canWrite) upd("mbcomments", c.id, {resolved: !c.resolved}); return; }
+  if (ds.cmtype) { t.parentElement.querySelectorAll("[data-cmtype]").forEach(b => b.classList.toggle("on", b === t)); return; }
+  if (ds.sch) return editSched(S.schedule.find(x => x.id === ds.sch));
+  if (ds.pur) return editPurchase(S.purchases.find(x => x.id === ds.pur));
+  if (ds.guest) return editGuest(S.guests.find(x => x.id === ds.guest));
+  if (ds.seat) return seatGuest(ds.seat);
+  if (ds.table) return editTable(tableById(ds.table));
+  if (ds.act) {
+    const a = ds.act;
+    if (a === "vendor") return addCandidate(null);
+    if (a === "task") return editTask(null);
+    if (a === "purchase") return editPurchase(null);
+    if (a === "guest") return editGuest(null);
+    if (a === "bulkGuests") return bulkGuests();
+    if (a === "table") return editTable(null);
+    if (a === "category") return editCategory(null);
+    if (a === "expense") return editExpense(null);
+    if (a === "schedItem") return editSched(null);
+    if (a === "schedCopy") return copyText(schedText(), "Тайминг скопирован");
+    if (a === "schedTpl") { (async () => { for (const [time, title, who2, place] of SCHED_TPL) await add("schedule", {time, title, who: who2, place}); toast("Типовой тайминг добавлен — поправьте под себя"); })(); return; }
+    if (a === "export") return exportXlsx();
+    if (a === "backup") return backupJSON();
+    if (a === "retry") return start();
+    if (a === "logout") { (async () => { if (outbox.length && !(await ask("Есть неотправленные изменения (" + outbox.length + "). Если выйти, они пропадут.", "Выйти"))) return; inviteCodes = null; members = []; await sb.auth.signOut(); session = null; start(); })(); return; }
+    if (a === "budgetTotal") { if (!canWrite) return; return openForm({title: "Общий бюджет", fields: [{k: "budget", l: "Сумма, ₽", t: "num"}, {k: "split", l: "Распределить по категориям заново (по типичным долям)", t: "check"}], vals: {budget: st().budget}, onSave: async d => {
+      await saveSettings({budget: d.budget});
+      if (d.split && d.budget) { const shares = cats().map(c => ({c, p: (TPL.categories.find(x => x.key === c.key) || {pct: 3}).pct})); const tot = sum(shares, x => x.p) || 1; for (const {c, p} of shares) await upd("categories", c.id, {planned: Math.round(d.budget * p / tot / 1000) * 1000}); }
+    }}); }
+  }
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && sheetStack.length) closeSheet(); });
+document.addEventListener("keydown", e => {
+  const el = e.target; if (!el.matches || !el.matches("input[data-money]") || el.selectionStart !== el.selectionEnd) return;
+  const p = el.selectionStart;
+  if (e.key === "Backspace" && p > 0 && el.value[p - 1] === " ") el.setSelectionRange(p - 1, p - 1);
+  if (e.key === "Delete" && el.value[p] === " ") el.setSelectionRange(p + 1, p + 1);
+});
+document.addEventListener("input", e => {
+  if (e.target.matches && e.target.matches("input[data-money]")) moneyInput(e.target);
+  if (e.target.id === "gq") { ui.q = e.target.value; applyGuestSearch(); }
+  if (e.target.matches("[data-dr]")) calcDrinks();
+});
+document.addEventListener("change", e => {
+  if (e.target.matches("[data-dr]")) calcDrinks();
+  if (e.target.matches("[data-mbfile]") && e.target.files.length) { const fs = [...e.target.files], k = e.target.dataset.mbfile; e.target.value = ""; uploadMoodPhotos(k, fs); }
+  if (e.target.matches("[data-restore]") && e.target.files[0]) { const f = e.target.files[0]; e.target.value = ""; restoreJSON(f); }
+});
+document.addEventListener("submit", async e => {
+  if (e.target.matches("[data-cmform]")) {
+    e.preventDefault(); if (!canWrite) return;
+    const f = e.target, text = f.text.value.trim(); if (!text) { f.text.focus(); return; }
+    const type = (f.querySelector("[data-cmtype].on") || {}).dataset?.cmtype || "wish";
+    await add("mbcomments", {board: f.dataset.cmform, type, text, resolved: false});
+    return;
+  }
+  if (e.target.id !== "setf") return;
+  e.preventDefault(); if (!canWrite) return;
+  const d = readForm(e.target, settingsFields());
+  if (!d.date) return toast("Дата не может быть пустой");
+  try { await saveSettings(d); toast("Сохранено"); } catch (err) {}
+});
+boot();
+if ("serviceWorker" in navigator && (location.protocol === "https:" || location.hostname === "localhost")) navigator.serviceWorker.register("sw.js").catch(() => {});
+</script>
+</body>
+</html>

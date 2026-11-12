@@ -1,0 +1,42 @@
+import sys, re, pathlib, urllib.request
+from playwright.sync_api import sync_playwright
+BASE = "http://localhost:8000/"; ROOT = pathlib.Path(__file__).parent
+errors = []
+def check(c, m):
+    print(("  ✓ " if c else "  ✗ ") + m)
+    if not c: errors.append(m)
+urllib.request.urlopen(BASE + "__reset").read()
+with sync_playwright() as p:
+    b = p.chromium.launch(); ctx = b.new_context(viewport={"width": 390, "height": 844}, has_touch=True); pg = ctx.new_page()
+    pg.route(re.compile(r"fonts\."), lambda r: r.abort())
+    pg.on("pageerror", lambda e: errors.append(str(e)))
+    S = lambda e: pg.evaluate("() => " + e)
+    pg.goto(BASE); pg.wait_for_selector(".auth"); pg.click("[data-sw]"); pg.fill("#em", "money@test.ru"); pg.fill("#pw", "secret12"); pg.click('.auth [type="submit"]')
+    pg.wait_for_selector(".join"); pg.click('[data-new="p1"]'); pg.wait_for_selector(".ob")
+    pg.locator("[data-restore]").set_input_files(str(ROOT.parent / "migration.json")); pg.wait_for_selector(".hero", timeout=15000)
+    print("\n== Разряды в суммах ==")
+    pg.goto(BASE + "#budget"); pg.wait_for_timeout(300)
+    pg.click('[data-act="budgetTotal"]'); el = pg.locator('.sheet [name="budget"]'); el.click(); el.press("Control+a"); el.press("Backspace")
+    seen = []
+    for ch in "1300000": el.type(ch); seen.append(el.input_value())
+    check(seen == ["1", "13", "130", "1 300", "13 000", "130 000", "1 300 000"], f"разбивка по мере ввода: {seen[-4:]}")
+    el.press("ArrowLeft"); el.press("ArrowLeft"); el.press("ArrowLeft"); el.press("Backspace")
+    check(el.input_value() == "130 000", f"удаление цифры в середине, курсор не прыгает ({el.input_value()})")
+    el.type("5"); check(el.input_value() == "1 305 000", f"вставка цифры в середину ({el.input_value()})")
+    pg.locator(".sheet [data-save]").click(); pg.wait_for_timeout(300)
+    check(S("S.settings.budget") == 1305000, "сохраняется числом 1 305 000")
+    check("1 305 000" in pg.locator("#app").inner_text().replace(" ", " ").replace(" ", " "), "на экране бюджет 1 305 000 ₽")
+    pg.click('[data-act="budgetTotal"]'); check(pg.locator('.sheet [name="budget"]').input_value() == "1 305 000", "при повторном открытии сумма уже с разрядами")
+    pg.keyboard.press("Escape")
+    pg.click(".fab"); a = pg.locator('.expf [name="amount"]'); a.type("15000,5")
+    check(a.input_value() == "15 000,5", f"сумма расхода с копейками ({a.input_value()})")
+    pg.locator(".expf [data-save]").click(); pg.wait_for_timeout(300)
+    check(S("S.expenses[0].amount") == 15000.5, "расход сохранён как 15000.5")
+    pg.locator('.row[data-cat="c_venue"]').click(); pg.locator(".sheet [data-edit]").click(); pl = pg.locator('.sheet [name="planned"]'); pl.fill("800000")
+    check(pl.input_value() == "800 000", "план категории с разрядами")
+    check(pg.locator('.sheet .money span').first.inner_text() == "₽", "знак ₽ справа в поле суммы")
+    pg.screenshot(path=str(ROOT / "shots_exp" / "05_money_field.png"))
+    b.close()
+print("\nОШИБКИ:" if errors else "\nВСЕ ПРОВЕРКИ ПРОЙДЕНЫ")
+for e in errors: print(" -", e)
+sys.exit(1 if errors else 0)

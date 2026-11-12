@@ -1,0 +1,803 @@
+{
+ "app": "wedding-planner",
+ "v": 1,
+ "exportedAt": "2026-11-12T08:00:00Z",
+ "settings": {
+  "p1": "Женя",
+  "p2": "Катя",
+  "date": "2027-06-12",
+  "guests": 60,
+  "budget": 0,
+  "venue": "SOMA",
+  "city": "Воронеж",
+  "extras": [
+   "registration",
+   "zags"
+  ],
+  "createdAt": 1794467951850
+ },
+ "categories": [
+  {
+   "key": "venue",
+   "name": "Площадка и банкет",
+   "emoji": "🏛",
+   "planned": 0,
+   "order": 0,
+   "createdAt": 1794467951850,
+   "id": "c_venue"
+  },
+  {
+   "key": "coord",
+   "name": "Координатор",
+   "emoji": "📋",
+   "planned": 0,
+   "order": 1,
+   "createdAt": 1794467951850,
+   "id": "c_coord"
+  },
+  {
+   "key": "host",
+   "name": "Ведущий и DJ",
+   "emoji": "🎤",
+   "planned": 100000,
+   "order": 2,
+   "createdAt": 1794467951850,
+   "id": "c_host"
+  },
+  {
+   "key": "music",
+   "name": "Живая музыка",
+   "emoji": "🎷",
+   "planned": 0,
+   "order": 3,
+   "createdAt": 1794467951850,
+   "id": "c_music"
+  },
+  {
+   "key": "photo",
+   "name": "Фотограф",
+   "emoji": "📷",
+   "planned": 0,
+   "order": 4,
+   "createdAt": 1794467951850,
+   "id": "c_photo"
+  },
+  {
+   "key": "video",
+   "name": "Рилсмейкер",
+   "emoji": "🎬",
+   "planned": 20000,
+   "order": 5,
+   "createdAt": 1794467951850,
+   "id": "c_video"
+  },
+  {
+   "key": "decor",
+   "name": "Декор и флористика",
+   "emoji": "💐",
+   "planned": 200000,
+   "order": 6,
+   "createdAt": 1794467951850,
+   "id": "c_decor"
+  },
+  {
+   "key": "bride",
+   "name": "Образ невесты",
+   "emoji": "👰",
+   "planned": 0,
+   "order": 7,
+   "createdAt": 1794467951850,
+   "id": "c_bride"
+  },
+  {
+   "key": "groom",
+   "name": "Образ жениха",
+   "emoji": "🤵",
+   "planned": 0,
+   "order": 8,
+   "createdAt": 1794467951850,
+   "id": "c_groom"
+  },
+  {
+   "key": "rings",
+   "name": "Кольца",
+   "emoji": "💍",
+   "planned": 0,
+   "order": 9,
+   "createdAt": 1794467951850,
+   "id": "c_rings"
+  },
+  {
+   "key": "cake",
+   "name": "Торт и сладкое",
+   "emoji": "🎂",
+   "planned": 0,
+   "order": 10,
+   "createdAt": 1794467951850,
+   "id": "c_cake"
+  },
+  {
+   "key": "transport",
+   "name": "Транспорт",
+   "emoji": "🚗",
+   "planned": 0,
+   "order": 11,
+   "createdAt": 1794467951850,
+   "id": "c_transport"
+  },
+  {
+   "key": "print",
+   "name": "Полиграфия",
+   "emoji": "✉️",
+   "planned": 0,
+   "order": 12,
+   "createdAt": 1794467951850,
+   "id": "c_print"
+  },
+  {
+   "key": "other",
+   "name": "Прочее",
+   "emoji": "✨",
+   "planned": 0,
+   "order": 13,
+   "createdAt": 1794467951850,
+   "id": "c_other"
+  }
+ ],
+ "vendors": [
+  {
+   "name": "SOMA (оранжерея)",
+   "catId": "c_venue",
+   "status": "talks",
+   "price": 0,
+   "notes": "Площадка выбрана. Банкет внутри, выездная регистрация и welcome — на улице. Рассадка: круглые столы или «П»/«U» волной.",
+   "order": 0,
+   "createdAt": 1794467951850,
+   "id": "v_soma"
+  }
+ ],
+ "payments": [],
+ "tasks": [
+  {
+   "title": "Определить общий бюджет и кто сколько вносит",
+   "period": "m12",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 0,
+   "createdAt": 1794467951850,
+   "id": "t000"
+  },
+  {
+   "title": "Составить черновой список гостей",
+   "period": "m12",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 1,
+   "createdAt": 1794467951850,
+   "id": "t001"
+  },
+  {
+   "title": "Забронировать площадку",
+   "period": "m12",
+   "who": "both",
+   "catId": "c_venue",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 2,
+   "createdAt": 1794467951850,
+   "id": "t002"
+  },
+  {
+   "title": "Нанять координатора",
+   "period": "m12",
+   "who": "both",
+   "catId": "c_coord",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 3,
+   "createdAt": 1794467951850,
+   "id": "t003"
+  },
+  {
+   "title": "Забронировать фотографа",
+   "period": "m12",
+   "who": "both",
+   "catId": "c_photo",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 4,
+   "createdAt": 1794467951850,
+   "id": "t004"
+  },
+  {
+   "title": "Забронировать ведущего и DJ",
+   "period": "m12",
+   "who": "both",
+   "catId": "c_host",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 5,
+   "createdAt": 1794467951850,
+   "id": "t005"
+  },
+  {
+   "title": "Забронировать кавер-группу / музыкантов",
+   "period": "m12",
+   "who": "both",
+   "catId": "c_music",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 6,
+   "createdAt": 1794467951850,
+   "id": "t006"
+  },
+  {
+   "title": "Собрать мудборд и цветовую гамму",
+   "period": "m12",
+   "who": "both",
+   "catId": "c_decor",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 7,
+   "createdAt": 1794467951850,
+   "id": "t007"
+  },
+  {
+   "title": "Забронировать рилсмейкера",
+   "period": "m8",
+   "who": "both",
+   "catId": "c_video",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 8,
+   "createdAt": 1794467951850,
+   "id": "t008"
+  },
+  {
+   "title": "Выбрать декоратора и флориста",
+   "period": "m8",
+   "who": "both",
+   "catId": "c_decor",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 9,
+   "createdAt": 1794467951850,
+   "id": "t009"
+  },
+  {
+   "title": "Подать заявление в ЗАГС через Госуслуги",
+   "period": "m8",
+   "who": "both",
+   "catId": null,
+   "tag": "zags",
+   "auto": 0,
+   "done": false,
+   "order": 10,
+   "createdAt": 1794467951850,
+   "id": "t010"
+  },
+  {
+   "title": "Продумать концепцию выездной церемонии",
+   "period": "m8",
+   "who": "both",
+   "catId": null,
+   "tag": "registration",
+   "auto": 0,
+   "done": false,
+   "order": 11,
+   "createdAt": 1794467951850,
+   "id": "t011"
+  },
+  {
+   "title": "Выбрать и заказать платье",
+   "period": "m8",
+   "who": "p2",
+   "catId": "c_bride",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 12,
+   "createdAt": 1794467951850,
+   "id": "t013"
+  },
+  {
+   "title": "Отправить гостям save the date",
+   "period": "m8",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 13,
+   "createdAt": 1794467951850,
+   "id": "t014"
+  },
+  {
+   "title": "Забронировать жильё для иногородних гостей",
+   "period": "m8",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 14,
+   "createdAt": 1794467951850,
+   "id": "t015"
+  },
+  {
+   "title": "Купить обручальные кольца",
+   "period": "m5",
+   "who": "both",
+   "catId": "c_rings",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 15,
+   "createdAt": 1794467951850,
+   "id": "t016"
+  },
+  {
+   "title": "Заказать костюм жениха",
+   "period": "m5",
+   "who": "p1",
+   "catId": "c_groom",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 16,
+   "createdAt": 1794467951850,
+   "id": "t017"
+  },
+  {
+   "title": "Дегустация и заказ торта",
+   "period": "m5",
+   "who": "both",
+   "catId": "c_cake",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 17,
+   "createdAt": 1794467951850,
+   "id": "t018"
+  },
+  {
+   "title": "Дегустация банкетного меню",
+   "period": "m5",
+   "who": "both",
+   "catId": "c_venue",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 18,
+   "createdAt": 1794467951850,
+   "id": "t019"
+  },
+  {
+   "title": "Заказать приглашения и полиграфию",
+   "period": "m5",
+   "who": "both",
+   "catId": "c_print",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 19,
+   "createdAt": 1794467951850,
+   "id": "t020"
+  },
+  {
+   "title": "Разослать приглашения",
+   "period": "m5",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 20,
+   "createdAt": 1794467951850,
+   "id": "t021"
+  },
+  {
+   "title": "Договориться о транспорте",
+   "period": "m5",
+   "who": "both",
+   "catId": "c_transport",
+   "tag": null,
+   "auto": 1,
+   "done": false,
+   "order": 21,
+   "createdAt": 1794467951850,
+   "id": "t022"
+  },
+  {
+   "title": "Собрать ответы гостей и финальное число",
+   "period": "m2",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 22,
+   "createdAt": 1794467951850,
+   "id": "t026"
+  },
+  {
+   "title": "Сделать рассадку гостей",
+   "period": "m2",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 23,
+   "createdAt": 1794467951850,
+   "id": "t027"
+  },
+  {
+   "title": "Согласовать тайминг дня с координатором",
+   "period": "m2",
+   "who": "both",
+   "catId": "c_coord",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 24,
+   "createdAt": 1794467951850,
+   "id": "t028"
+  },
+  {
+   "title": "Обсудить сценарий с ведущим",
+   "period": "m2",
+   "who": "both",
+   "catId": "c_host",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 25,
+   "createdAt": 1794467951850,
+   "id": "t029"
+  },
+  {
+   "title": "Согласовать сет-лист с музыкантами",
+   "period": "m2",
+   "who": "both",
+   "catId": "c_music",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 26,
+   "createdAt": 1794467951850,
+   "id": "t030"
+  },
+  {
+   "title": "Пробный макияж и причёска",
+   "period": "m2",
+   "who": "p2",
+   "catId": "c_bride",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 27,
+   "createdAt": 1794467951850,
+   "id": "t031"
+  },
+  {
+   "title": "Финальная примерка платья",
+   "period": "m2",
+   "who": "p2",
+   "catId": "c_bride",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 28,
+   "createdAt": 1794467951850,
+   "id": "t032"
+  },
+  {
+   "title": "Рассчитать и закупить алкоголь",
+   "period": "m2",
+   "who": "p1",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 29,
+   "createdAt": 1794467951850,
+   "id": "t033"
+  },
+  {
+   "title": "Список обязательных кадров для фотографа",
+   "period": "m2",
+   "who": "both",
+   "catId": "c_photo",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 30,
+   "createdAt": 1794467951850,
+   "id": "t034"
+  },
+  {
+   "title": "Внести финальные доплаты подрядчикам",
+   "period": "w2",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 31,
+   "createdAt": 1794467951850,
+   "id": "t035"
+  },
+  {
+   "title": "Передать координатору контакты всех подрядчиков",
+   "period": "w2",
+   "who": "both",
+   "catId": "c_coord",
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 32,
+   "createdAt": 1794467951850,
+   "id": "t036"
+  },
+  {
+   "title": "Подтвердить время и адрес со всеми подрядчиками",
+   "period": "w2",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 33,
+   "createdAt": 1794467951850,
+   "id": "t037"
+  },
+  {
+   "title": "Собрать «тревожный чемоданчик»",
+   "period": "w2",
+   "who": "p2",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 34,
+   "createdAt": 1794467951850,
+   "id": "t038"
+  },
+  {
+   "title": "Подготовить конверты с оплатой на день свадьбы",
+   "period": "w2",
+   "who": "p1",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 35,
+   "createdAt": 1794467951850,
+   "id": "t039"
+  },
+  {
+   "title": "Забрать кольца, костюм и платье",
+   "period": "w2",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 36,
+   "createdAt": 1794467951850,
+   "id": "t040"
+  },
+  {
+   "title": "Передать кольца ответственному",
+   "period": "day",
+   "who": "p1",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 37,
+   "createdAt": 1794467951850,
+   "id": "t041"
+  },
+  {
+   "title": "Отдать координатору конверты с оплатой",
+   "period": "day",
+   "who": "p1",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 38,
+   "createdAt": 1794467951850,
+   "id": "t042"
+  },
+  {
+   "title": "Наслаждаться днём 🥂",
+   "period": "day",
+   "who": "both",
+   "catId": null,
+   "tag": null,
+   "auto": 0,
+   "done": false,
+   "order": 39,
+   "createdAt": 1794467951850,
+   "id": "t043"
+  }
+ ],
+ "purchases": [
+  {
+   "title": "Обручальные кольца",
+   "catId": "c_rings",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 0,
+   "createdAt": 1794467951850,
+   "id": "p00"
+  },
+  {
+   "title": "Платье",
+   "catId": "c_bride",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 1,
+   "createdAt": 1794467951850,
+   "id": "p01"
+  },
+  {
+   "title": "Туфли невесты",
+   "catId": "c_bride",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 2,
+   "createdAt": 1794467951850,
+   "id": "p02"
+  },
+  {
+   "title": "Аксессуары невесты",
+   "catId": "c_bride",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 3,
+   "createdAt": 1794467951850,
+   "id": "p03"
+  },
+  {
+   "title": "Костюм",
+   "catId": "c_groom",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 4,
+   "createdAt": 1794467951850,
+   "id": "p04"
+  },
+  {
+   "title": "Обувь жениха",
+   "catId": "c_groom",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 5,
+   "createdAt": 1794467951850,
+   "id": "p05"
+  },
+  {
+   "title": "Бутоньерка",
+   "catId": "c_decor",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 6,
+   "createdAt": 1794467951850,
+   "id": "p06"
+  },
+  {
+   "title": "Подушечка или шкатулка для колец",
+   "catId": "c_rings",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 7,
+   "createdAt": 1794467951850,
+   "id": "p07"
+  },
+  {
+   "title": "Бокалы молодожёнов",
+   "catId": "c_other",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 8,
+   "createdAt": 1794467951850,
+   "id": "p08"
+  },
+  {
+   "title": "Алкоголь",
+   "catId": "c_venue",
+   "status": "need",
+   "price": 0,
+   "who": "both",
+   "order": 9,
+   "createdAt": 1794467951850,
+   "id": "p09"
+  }
+ ],
+ "guests": [],
+ "tables": [
+  {
+   "name": "Стол молодожёнов",
+   "seats": 2,
+   "shape": "rect",
+   "order": 0,
+   "createdAt": 1794467951850,
+   "id": "tb00"
+  },
+  {
+   "name": "Стол 1",
+   "seats": 10,
+   "shape": "round",
+   "order": 1,
+   "createdAt": 1794467951850,
+   "id": "tb01"
+  },
+  {
+   "name": "Стол 2",
+   "seats": 10,
+   "shape": "round",
+   "order": 2,
+   "createdAt": 1794467951850,
+   "id": "tb02"
+  },
+  {
+   "name": "Стол 3",
+   "seats": 10,
+   "shape": "round",
+   "order": 3,
+   "createdAt": 1794467951850,
+   "id": "tb03"
+  },
+  {
+   "name": "Стол 4",
+   "seats": 10,
+   "shape": "round",
+   "order": 4,
+   "createdAt": 1794467951850,
+   "id": "tb04"
+  },
+  {
+   "name": "Стол 5",
+   "seats": 10,
+   "shape": "round",
+   "order": 5,
+   "createdAt": 1794467951850,
+   "id": "tb05"
+  },
+  {
+   "name": "Стол 6",
+   "seats": 10,
+   "shape": "round",
+   "order": 6,
+   "createdAt": 1794467951850,
+   "id": "tb06"
+  }
+ ]
+}
