@@ -131,6 +131,23 @@ h2 .lnk{text-transform:none;letter-spacing:0;color:var(--accent);font-weight:600
 .mini{font-size:12px;color:var(--muted)}
 .neg{color:var(--danger)}
 .ro .fab,.ro .wr{display:none!important}
+.sw{position:relative;overflow:hidden}
+.list>.sw:not(:last-child){border-bottom:1px solid var(--line)}
+.list>.sw>.swc>.row{border-bottom:0}
+.swa{position:absolute;inset:0 0 0 auto;width:92px;display:flex}
+.swa button{flex:1;background:var(--danger);color:#fff;font-weight:700;font-size:14px}
+.swc{position:relative;background:var(--card);transition:transform .22s cubic-bezier(.2,.8,.2,1);touch-action:pan-y}
+.addrow{justify-content:center;font-weight:700;color:var(--accent);padding:16px;font-size:16px;border-top:1px solid var(--line)}
+.amt{display:flex;align-items:baseline;gap:8px;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:10px 16px;margin-bottom:14px}
+.amt input{flex:1;min-width:0;border:0;background:none;outline:none;font:600 40px/1.1 "Cormorant Garamond",Georgia,serif;color:var(--ink)}
+.amt span{font:600 28px "Cormorant Garamond",Georgia,serif;color:var(--muted)}
+.ecats{flex-wrap:wrap;margin:0;padding:0;overflow:visible}
+.seg{display:flex;background:var(--soft);border-radius:12px;padding:3px;gap:3px}
+.seg button{flex:1;padding:10px 6px;border-radius:9px;font-weight:600;font-size:14px;color:var(--muted)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.rcpt{display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.rprev{position:relative}.rprev img{display:block;max-width:100%;max-height:320px;border-radius:12px;border:1px solid var(--line)}
+.rprev .x{position:absolute;top:6px;right:6px;width:30px;height:30px;border-radius:50%;background:rgba(0,0,0,.55);color:#fff}
 .dx{display:none!important}
 @media (hover:hover){.row:hover{background:var(--soft)}button.row,.chip,.btn,.tabbar button{transition:background .12s}}
 @media (min-width:900px){
@@ -185,8 +202,8 @@ const PMETH = {cash:"Наличные",transfer:"Перевод",card:"Карт�
 const PUR = {need:["Купить","s-search"],ordered:["Заказано","s-talks"],bought:["Куплено","s-paid"]};
 const RSVP = {list:["В списке","s-none"],invited:["Приглашён","s-talks"],yes:["Придёт","s-paid"],no:["Не придёт","s-no"]};
 const GROUPS = ["Семья","Друзья","Коллеги","Другое"];
-const COLLS = ["categories","vendors","payments","tasks","purchases","guests","tables"];
-const S = {settings:null,categories:[],vendors:[],payments:[],tasks:[],purchases:[],guests:[],tables:[]};
+const COLLS = ["categories","vendors","payments","tasks","purchases","guests","tables","expenses"];
+const S = {settings:null,categories:[],vendors:[],payments:[],tasks:[],purchases:[],guests:[],tables:[],expenses:[]};
 const CFG = window.WEDDING_CONFIG || {};
 let sb = null, session = null, W = null, me = null, canWrite = true, phase = "boot", loaded = false, offline = false, outbox = [], members = [], tfTouched = false;
 const ui = {vf:"all", tf:"all", pf:"all", gf:"all", lf:"all", q:""};
@@ -223,16 +240,17 @@ const vPaid = v => sum(S.payments.filter(p => p.vendorId === v.id && p.status ==
 const vPlanned = v => sum(S.payments.filter(p => p.vendorId === v.id && p.status !== "paid"), p => p.amount);
 const catBooked = cid => S.vendors.some(v => v.catId === cid && (v.status === "contract" || v.status === "paid"));
 function catStats(c) {
-  const vs = S.vendors.filter(v => v.catId === c.id), ps = S.purchases.filter(p => p.catId === c.id);
-  const contract = sum(vs, v => v.price) + sum(ps, p => p.price);
-  const paid = sum(vs, vPaid) + sum(ps.filter(p => p.status === "bought"), p => p.price);
+  const vs = S.vendors.filter(v => v.catId === c.id && v.status !== "rejected" && v.status !== "search" && v.status !== "talks"), ps = S.purchases.filter(p => p.catId === c.id), es = S.expenses.filter(e => e.catId === c.id);
+  const spent = sum(es, e => e.amount);
+  const contract = sum(vs, v => v.price) + sum(ps, p => p.price) + spent;
+  const paid = sum(vs, vPaid) + sum(ps.filter(p => p.status === "bought"), p => p.price) + spent;
   return {contract, paid, planned: +c.planned || 0};
 }
 function totals() {
   const all = cats().map(catStats);
-  const orphanV = S.vendors.filter(v => !catById(v.catId)), orphanP = S.purchases.filter(p => !catById(p.catId));
-  const contract = sum(all, x => x.contract) + sum(orphanV, v => v.price) + sum(orphanP, p => p.price);
-  const paid = sum(all, x => x.paid) + sum(orphanV, vPaid) + sum(orphanP.filter(p => p.status === "bought"), p => p.price);
+  const orphanV = S.vendors.filter(v => !catById(v.catId) && (v.status === "contract" || v.status === "paid")), orphanP = S.purchases.filter(p => !catById(p.catId)), orphanE = S.expenses.filter(e => !catById(e.catId));
+  const contract = sum(all, x => x.contract) + sum(orphanV, v => v.price) + sum(orphanP, p => p.price) + sum(orphanE, e => e.amount);
+  const paid = sum(all, x => x.paid) + sum(orphanV, vPaid) + sum(orphanP.filter(p => p.status === "bought"), p => p.price) + sum(orphanE, e => e.amount);
   const budget = +st().budget || 0;
   return {budget, contract, paid, toPay: Math.max(0, contract - paid), free: budget - contract, planned: sum(all, x => x.planned)};
 }
@@ -294,7 +312,7 @@ async function loadAll() {
   try {
     let rows = [], from = 0;
     for (;;) {
-      const {data, error} = await sb.from("docs").select("coll,id,data").eq("wedding_id", W).range(from, from + 999);
+      const {data, error} = await sb.from("docs").select("coll,id,data").eq("wedding_id", W).neq("coll", "receipts").range(from, from + 999);
       if (error) throw error;
       rows = rows.concat(data); if (data.length < 1000) break; from += 1000;
     }
@@ -309,7 +327,7 @@ function subscribe() {
   if (channel) sb.removeChannel(channel);
   channel = sb.channel("docs-" + W).on("postgres_changes", {event: "*", schema: "public", table: "docs"}, p => {
     const row = p.eventType === "DELETE" ? p.old : p.new;
-    if (!row || row.wedding_id !== W) return;
+    if (!row || row.wedding_id !== W || row.coll === "receipts") return;
     if (outbox.some(o => o.coll === row.coll && o.id === row.id)) return;
     applyLocal(p.eventType === "DELETE" ? {t: "del", coll: row.coll, id: row.id} : {t: "up", coll: row.coll, id: row.id, data: row.data || {}});
     saveCache(); schedule();
@@ -604,10 +622,10 @@ const isSel = v => v.status === "contract" || v.status === "paid";
 const stars = n => n ? "★".repeat(n) + "☆".repeat(5 - n) : "";
 function vendorRow(v) {
   const paid = vPaid(v), price = +v.price || 0;
-  return `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}${v.contact ? `<span>${esc(v.contact)}</span>` : ""}</div>${price ? `<div style="margin-top:8px">${barHTML(paid, Math.max(0, price - paid), price)}</div>` : ""}</div><div class="r">${price ? rub(price) : "—"}${price ? `<small>оплачено ${rub(paid)}</small>` : ""}</div></button>`;
+  return swipe("vendors", v.id, `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}${v.contact ? `<span>${esc(v.contact)}</span>` : ""}</div>${price ? `<div style="margin-top:8px">${barHTML(paid, Math.max(0, price - paid), price)}</div>` : ""}</div><div class="r">${price ? rub(price) : "—"}${price ? `<small>оплачено ${rub(paid)}</small>` : ""}</div></button>`);
 }
 function candRow(v) {
-  return `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${v.status === "talks" ? pill(VST, "talks") : ""}${v.rating ? `<span style="color:var(--accent2)">${stars(+v.rating)}</span>` : ""}${v.link ? "<span>🔗</span>" : ""}${v.notes ? `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(v.notes.split("\n")[0])}</span>` : ""}</div></div><div class="r">${+v.price ? rub(v.price) : ""}${+v.price ? "<small>предложение</small>" : ""}</div></button>`;
+  return swipe("vendors", v.id, `<button class="row" data-vendor="${esc(v.id)}"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${v.status === "talks" ? pill(VST, "talks") : ""}${v.rating ? `<span style="color:var(--accent2)">${stars(+v.rating)}</span>` : ""}${v.link ? "<span>🔗</span>" : ""}${v.notes ? `<span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%">${esc(v.notes.split("\n")[0])}</span>` : ""}</div></div><div class="r">${+v.price ? rub(v.price) : ""}${+v.price ? "<small>предложение</small>" : ""}</div></button>`);
 }
 function vVendors() {
   const f = ui.vf;
@@ -766,36 +784,37 @@ function vBudget() {
   <div class="card pad">
     <button data-act="budgetTotal" style="width:100%;text-align:left"><div class="mini">Общий бюджет ${canWrite ? "· нажмите, чтобы изменить" : ""}</div><div class="big">${T.budget ? rub(T.budget) : "Задать бюджет"}</div></button>
     <div style="margin-top:12px">${barHTML(T.paid, T.toPay, T.budget)}</div>
-    <div class="legend"><span><i style="background:var(--accent)"></i>Оплачено ${rub(T.paid)}</span><span><i style="background:var(--accent2);opacity:.55"></i>К оплате ${rub(T.toPay)}</span><span class="${T.free < 0 ? "neg" : ""}"><i style="background:var(--soft);border:1px solid var(--line)"></i>${T.free < 0 ? "Перерасход " + rub(-T.free) : "Свободно " + rub(T.free)}</span></div>
+    <div class="legend"><span><i style="background:var(--accent)"></i>Оплачено ${rub(T.paid)}</span><span><i style="background:var(--accent2);opacity:.55"></i>К оплате ${rub(T.toPay)}</span>${T.budget ? `<span class="${T.free < 0 ? "neg" : ""}"><i style="background:var(--soft);border:1px solid var(--line)"></i>${T.free < 0 ? "Перерасход " + rub(-T.free) : "Свободно " + rub(T.free)}</span>` : ""}</div>
   </div>
   <div class="stats" style="margin-top:10px">
     <div class="stat"><div class="v">${rub(T.contract)}</div><div class="l">по договорам и покупкам</div></div>
     <div class="stat"><div class="v ${T.budget && T.planned > T.budget ? "neg" : ""}">${rub(T.planned)}</div><div class="l">распределено по плану</div></div>
   </div>
   <div class="cols"><div>
-  <h2>План и факт по категориям <button class="lnk wr" data-act="category">+ Категория</button></h2>
-  <div class="card list">${cats().map(c => { const x = catStats(c); const over = x.planned && x.contract > x.planned; return `<button class="row" data-cat="${esc(c.id)}"><div class="grow"><div class="t">${esc(c.emoji || "")} ${esc(c.name)}</div><div style="margin-top:7px">${x.planned || x.contract ? `<div class="bar"><i class="${over ? "over" : "b1"}" style="width:${Math.min(100, x.paid / Math.max(x.planned, x.contract, 1) * 100)}%"></i><i class="b2" style="width:${Math.max(0, (x.contract - x.paid) / Math.max(x.planned, x.contract, 1) * 100)}%"></i></div>` : ""}</div><div class="s" style="margin-top:5px">план ${rub(x.planned)} · факт <span class="${over ? "neg" : ""}">${rub(x.contract)}</span></div></div><div class="r">${rub(x.paid)}<small>оплачено</small></div></button>`; }).join("") || '<div class="empty">Категорий нет</div>'}</div>
+  <h2>План и факт по категориям</h2>
+  <div class="card list">${cats().map(c => { const x = catStats(c); const over = x.planned && x.contract > x.planned; return swipe("categories", c.id, `<button class="row" data-cat="${esc(c.id)}"><div class="grow"><div class="t">${esc(c.emoji || "")} ${esc(c.name)}</div><div style="margin-top:7px">${x.planned || x.contract ? `<div class="bar"><i class="${over ? "over" : "b1"}" style="width:${Math.min(100, x.paid / Math.max(x.planned, x.contract, 1) * 100)}%"></i><i class="b2" style="width:${Math.max(0, (x.contract - x.paid) / Math.max(x.planned, x.contract, 1) * 100)}%"></i></div>` : ""}</div><div class="s" style="margin-top:5px">план ${rub(x.planned)} · факт <span class="${over ? "neg" : ""}">${rub(x.contract)}</span></div></div><div class="r">${rub(x.paid)}<small>оплачено</small></div></button>`); }).join("") || '<div class="empty">Категорий нет</div>'}<button class="row addrow wr" data-act="category">＋ Добавить категорию</button></div>
+  <h2>Расходы ${S.expenses.length ? `<span style="text-transform:none;letter-spacing:0">${rub(sum(S.expenses, e => e.amount))}</span>` : ""}</h2>
+  <div class="card list">${S.expenses.length ? [...S.expenses].sort((a, b) => (b.date || "").localeCompare(a.date || "") || (b.createdAt || 0) - (a.createdAt || 0)).map(expenseRow).join("") : '<div class="empty">Мелкие траты — платье, макияж, такси, кольца… Добавляйте кнопкой «+».</div>'}<button class="row addrow wr" data-act="expense">＋ Добавить расход</button></div>
   </div><div>
   <h2>Все платежи</h2>
   <div class="chips">${[["all", "Все"], ["planned", "Предстоящие"], ["paid", "Оплаченные"]].map(([k, l]) => `<button class="chip ${pf === k ? "on" : ""}" data-pf="${k}">${l}</button>`).join("")}</div>
   <div class="card list" style="margin-top:8px">${pays.length ? pays.map(p => payRow(p)).join("") : '<div class="empty">Платежей нет. Добавляйте задатки и доплаты в карточке подрядчика.</div>'}</div>
   </div></div>
-  <div style="margin-top:18px"><button class="btn w" data-act="export">${IC.xls.replace("<svg", '<svg width="20" height="20"')} Выгрузить в Excel</button></div>`;
+  <div style="margin-top:18px"><button class="btn w" data-act="export">${IC.xls.replace("<svg", '<svg width="20" height="20"')} Выгрузить в Excel</button></div>` + fab("expense");
 }
 function editCategory(c) {
   const fields = [{k: "emoji", l: "Иконка", half: true, ph: "💐"}, {k: "planned", l: "План, ₽", t: "num", half: true}, {k: "name", l: "Название"}];
-  const used = c && (S.vendors.some(v => v.catId === c.id) || S.purchases.some(p => p.catId === c.id));
   openForm({title: c ? "Категория" : "Новая категория", fields, vals: c || {emoji: "✨"}, required: "name",
-    after: c && used ? `<p class="mini">Категорию нельзя удалить, пока в ней есть подрядчики или покупки.</p>` : "",
     onSave: async d => { if (c) await upd("categories", c.id, d); else await add("categories", {...d, order: S.categories.length}); },
-    onDelete: c && !used ? async () => { for (const t of S.tasks.filter(t => t.catId === c.id)) await upd("tasks", t.id, {catId: null, auto: 0}); await del("categories", c.id); } : null});
+    onDelete: null});
+  if (c) { const bg = sheetStack[sheetStack.length - 1], row = bg && bg.querySelector(".btnrow"); if (row && canWrite) { const b = document.createElement("button"); b.type = "button"; b.className = "btn danger"; b.textContent = "Удалить"; b.onclick = () => deleteCategory(c); row.prepend(b); } }
 }
 
 /* ---------- TASKS ---------- */
 function taskRow(t) {
   const done = isDone(t), auto = autoDone(t) && !t.done, late = isLate(t), due = taskDue(t);
   const c = catById(t.catId);
-  return `<div class="row ${done ? "done" : ""}"><button class="ck ${done ? "on" : ""}" data-tick="${esc(t.id)}" aria-label="Готово"></button><button class="grow" style="text-align:left" data-task="${esc(t.id)}"><div class="t">${esc(t.title)}</div><div class="s"><span>${esc(who(t.who))}</span>${c ? `<span>${esc(c.emoji || "")} ${esc(c.name)}</span>` : ""}${auto ? '<span class="pill s-contract">авто: договор есть</span>' : ""}${late ? `<span class="pill s-late">просрочено</span>` : !done && due ? `<span>до ${esc(fmtShort(due))}</span>` : ""}</div></button></div>`;
+  return swipe("tasks", t.id, `<div class="row ${done ? "done" : ""}"><button class="ck ${done ? "on" : ""}" data-tick="${esc(t.id)}" aria-label="Готово"></button><button class="grow" style="text-align:left" data-task="${esc(t.id)}"><div class="t">${esc(t.title)}</div><div class="s"><span>${esc(who(t.who))}</span>${c ? `<span>${esc(c.emoji || "")} ${esc(c.name)}</span>` : ""}${auto ? '<span class="pill s-contract">авто: договор есть</span>' : ""}${late ? `<span class="pill s-late">просрочено</span>` : !done && due ? `<span>до ${esc(fmtShort(due))}</span>` : ""}</div></button></div>`);
 }
 function vTasks() {
   const f = ui.tf, cur = periodNow();
@@ -855,7 +874,7 @@ function vPurchases() {
   const total = sum(S.purchases, p => p.price), bought = sum(S.purchases.filter(p => p.status === "bought"), p => p.price);
   return head("Покупки", "more") + `<div class="stats"><div class="stat"><div class="v">${rub(total)}</div><div class="l">всего по списку</div></div><div class="stat"><div class="v">${rub(bought)}</div><div class="l">уже куплено</div></div></div>
   <div class="chips" style="margin-top:14px">${[["all", "Все"], ...Object.entries(PUR).map(([k, [l]]) => [k, l])].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-lf="${k}">${l}<b>${k === "all" ? S.purchases.length : S.purchases.filter(p => p.status === k).length}</b></button>`).join("")}</div>
-  <div class="card list" style="margin-top:8px">${list.length ? list.map(p => `<button class="row" data-pur="${esc(p.id)}"><div class="grow"><div class="t">${esc(p.title)}</div><div class="s">${pill(PUR, p.status)}<span>${esc(catLabel(p.catId))}</span>${p.who ? `<span>${esc(who(p.who))}</span>` : ""}</div></div><div class="r">${+p.price ? rub(p.price) : "—"}</div></button>`).join("") : '<div class="empty">Список пуст</div>'}</div>` + fab("purchase");
+  <div class="card list" style="margin-top:8px">${list.length ? list.map(p => swipe("purchases", p.id, `<button class="row" data-pur="${esc(p.id)}"><div class="grow"><div class="t">${esc(p.title)}</div><div class="s">${pill(PUR, p.status)}<span>${esc(catLabel(p.catId))}</span>${p.who ? `<span>${esc(who(p.who))}</span>` : ""}</div></div><div class="r">${+p.price ? rub(p.price) : "—"}</div></button>`)).join("") : '<div class="empty">Список пуст</div>'}</div>` + fab("purchase");
 }
 function editPurchase(p) {
   const fields = [{k: "title", l: "Что купить"}, {k: "catId", l: "Категория", t: "sel", o: cats().map(c => [c.id, (c.emoji ? c.emoji + " " : "") + c.name])},
@@ -881,9 +900,9 @@ function vGuests() {
   <div style="margin-top:14px"><input class="search" id="gq" placeholder="Поиск по имени" value="${esc(ui.q)}"></div>
   <div class="chips">${[["all", "Все"], ["p1", name1()], ["p2", name2()], ["both", "Общие"], ["yes", "Придут"], ["no", "Не придут"]].map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-gf="${k}">${esc(l)}</button>`).join("")}</div>
   <div class="btnrow wr" style="margin-top:8px"><button class="btn" data-act="bulkGuests">Добавить списком</button></div>
-  <div class="card list" style="margin-top:12px" id="glist">${list.length ? list.map(g => { const t = tableById(g.tableId); return `<button class="row" data-guest="${esc(g.id)}" data-n="${esc(String(g.name).toLowerCase())}"><div class="grow"><div class="t">${esc(g.name)}</div><div class="s"><span>${esc(g.group || "")}</span><span>${esc(sideLabel(g.side))}</span>${t ? `<span>🪑 ${esc(t.name)}</span>` : ""}</div></div><div class="r">${pill(RSVP, g.rsvp || "list")}</div></button>`; }).join("") : '<div class="empty">Гостей пока нет. Добавьте по одному или списком.</div>'}</div>` + fab("guest");
+  <div class="card list" style="margin-top:12px" id="glist">${list.length ? list.map(g => { const t = tableById(g.tableId); return swipe("guests", g.id, `<button class="row" data-guest="${esc(g.id)}" data-n="${esc(String(g.name).toLowerCase())}"><div class="grow"><div class="t">${esc(g.name)}</div><div class="s"><span>${esc(g.group || "")}</span><span>${esc(sideLabel(g.side))}</span>${t ? `<span>🪑 ${esc(t.name)}</span>` : ""}</div></div><div class="r">${pill(RSVP, g.rsvp || "list")}</div></button>`); }).join("") : '<div class="empty">Гостей пока нет. Добавьте по одному или списком.</div>'}</div>` + fab("guest");
 }
-function applyGuestSearch() { const q = ui.q.trim().toLowerCase(); $$("#glist [data-n]").forEach(el => el.style.display = !q || el.dataset.n.includes(q) ? "" : "none"); }
+function applyGuestSearch() { const q = ui.q.trim().toLowerCase(); $$("#glist [data-n]").forEach(el => { const w = el.closest(".sw") || el; w.style.display = !q || el.dataset.n.includes(q) ? "" : "none"; }); }
 const guestFields = () => [
   {k: "name", l: "Имя и фамилия"},
   {k: "side", l: "Сторона", t: "sel", o: [["p1", name1()], ["p2", name2()], ["both", "Общие"]], half: true},
@@ -1085,6 +1104,147 @@ async function createPlan(d, catOn, exOn) {
   ov.remove(); location.hash = "home"; schedule();
 }
 
+/* ---------- SWIPE TO DELETE ---------- */
+const swipe = (kind, id, inner) => canWrite ? `<div class="sw" data-sw="${kind}:${esc(id)}"><div class="swa"><button data-swdel aria-label="Удалить">Удалить</button></div><div class="swc">${inner}</div></div>` : inner;
+let swOpen = null, swDrag = null, swSuppress = false;
+function swClose(except) { if (swOpen && swOpen !== except) { swOpen.querySelector(".swc").style.transform = ""; swOpen.classList.remove("open"); swOpen = null; } }
+document.addEventListener("pointerdown", e => {
+  const c = e.target.closest(".swc"); if (!c || e.button > 0) { if (!e.target.closest(".swa")) swClose(); return; }
+  const sw = c.parentElement; swClose(sw);
+  swDrag = {sw, c, x: e.clientX, y: e.clientY, base: sw.classList.contains("open") ? -92 : 0, dir: null, dx: 0};
+});
+document.addEventListener("pointermove", e => {
+  const d = swDrag; if (!d) return;
+  const dx = e.clientX - d.x, dy = e.clientY - d.y;
+  if (!d.dir) { if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return; d.dir = Math.abs(dx) > Math.abs(dy) ? "h" : "v"; if (d.dir === "h") d.c.style.transition = "none"; }
+  if (d.dir !== "h") return;
+  d.dx = dx; const t = Math.max(-120, Math.min(0, d.base + dx));
+  d.c.style.transform = `translateX(${t}px)`;
+});
+document.addEventListener("pointerup", () => {
+  const d = swDrag; swDrag = null; if (!d || d.dir !== "h") return;
+  d.c.style.transition = ""; swSuppress = true; setTimeout(() => swSuppress = false, 50);
+  if (d.base + d.dx < -46) { d.c.style.transform = "translateX(-92px)"; d.sw.classList.add("open"); swOpen = d.sw; }
+  else { d.c.style.transform = ""; d.sw.classList.remove("open"); if (swOpen === d.sw) swOpen = null; }
+});
+document.addEventListener("pointercancel", () => { if (swDrag) { swDrag.c.style.transition = ""; swDrag.c.style.transform = swDrag.base ? "translateX(-92px)" : ""; swDrag = null; } });
+document.addEventListener("click", e => { if (swSuppress) { e.stopPropagation(); e.preventDefault(); swSuppress = false; } }, true);
+document.addEventListener("click", async e => {
+  const b = e.target.closest("[data-swdel]"); if (!b) return;
+  e.stopPropagation();
+  const [kind, id] = b.closest(".sw").dataset.sw.split(":");
+  swClose();
+  await deleteItem(kind, id);
+}, true);
+async function deleteItem(kind, id) {
+  if (kind === "vendors") { const v = vendorById(id); if (!v) return; const pays = S.payments.filter(p => p.vendorId === id); if (!(await ask(`«${v.name}»${pays.length ? ` и ${pays.length} ${plural(pays.length, "платёж", "платежа", "платежей")}` : ""} будут удалены.`))) return; for (const p of pays) await del("payments", p.id); await del("vendors", id); toast("Подрядчик удалён"); }
+  else if (kind === "categories") await deleteCategory(catById(id));
+  else if (kind === "expenses") { const x = S.expenses.find(e => e.id === id); if (!x || !(await ask(`Расход «${x.title || catLabel(x.catId)}» на ${rub(x.amount)} будет удалён.`))) return; await del("expenses", id); if (x.hasReceipt) delReceipt(id); toast("Расход удалён"); }
+  else if (kind === "purchases") { const x = S.purchases.find(e => e.id === id); if (!x || !(await ask(`«${x.title}» будет удалено из покупок.`))) return; await del("purchases", id); }
+  else if (kind === "guests") { const x = S.guests.find(e => e.id === id); if (!x || !(await ask(`${x.name} будет удалён(а) из списка гостей.`))) return; await del("guests", id); }
+  else if (kind === "tasks") { const x = S.tasks.find(e => e.id === id); if (!x || !(await ask(`Задача «${x.title}» будет удалена.`))) return; await del("tasks", id); }
+}
+async function deleteCategory(c) {
+  if (!c) return;
+  const vs = S.vendors.filter(v => v.catId === c.id), ps = S.purchases.filter(p => p.catId === c.id), es = S.expenses.filter(e => e.catId === c.id);
+  const other = cats().find(x => x.key === "other" && x.id !== c.id) || cats().find(x => x.id !== c.id);
+  const n = vs.length + ps.length + es.length;
+  const msg = n ? `В категории ${n} ${plural(n, "запись", "записи", "записей")} (подрядчики, покупки, расходы). Они переедут в «${other ? other.name : "Без категории"}».` : `Категория «${c.name}» будет удалена.`;
+  if (!(await ask(msg))) return;
+  const to = other ? other.id : null;
+  for (const v of vs) await upd("vendors", v.id, {catId: to});
+  for (const p of ps) await upd("purchases", p.id, {catId: to});
+  for (const x of es) await upd("expenses", x.id, {catId: to});
+  for (const t of S.tasks.filter(t => t.catId === c.id)) await upd("tasks", t.id, {catId: null, auto: 0});
+  await del("categories", c.id); closeAll(); toast("Категория удалена");
+}
+
+/* ---------- EXPENSES ---------- */
+const PAYER = {p1: () => name1(), p2: () => name2(), both: () => "Вместе"};
+function expenseRow(x) {
+  const c = catById(x.catId);
+  const sub = [c ? (c.emoji || "") + " " + c.name : "Без категории", x.date ? fmtShort(x.date) : "", PMETH[x.method], x.payer && PAYER[x.payer] ? PAYER[x.payer]() : ""].filter(Boolean).map(esc).join(" · ");
+  return swipe("expenses", x.id, `<button class="row" data-exp="${esc(x.id)}"><div class="grow"><div class="t">${esc(x.title || (c ? c.name : "Расход"))}${x.hasReceipt ? " 🧾" : ""}</div><div class="s">${sub}</div></div><div class="r">${rub(x.amount)}</div></button>`);
+}
+let lastCat = null;
+async function compressImage(file) {
+  const url = URL.createObjectURL(file);
+  try {
+    const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = url; });
+    const k = Math.min(1, 1400 / Math.max(img.naturalWidth, img.naturalHeight));
+    const cv = document.createElement("canvas"); cv.width = Math.round(img.naturalWidth * k); cv.height = Math.round(img.naturalHeight * k);
+    cv.getContext("2d").drawImage(img, 0, 0, cv.width, cv.height);
+    let q = 0.7, out = cv.toDataURL("image/jpeg", q);
+    while (out.length > 350000 && q > 0.3) { q -= 0.15; out = cv.toDataURL("image/jpeg", q); }
+    return out;
+  } finally { URL.revokeObjectURL(url); }
+}
+const receiptCache = {};
+async function getReceipt(id) {
+  if (receiptCache[id]) return receiptCache[id];
+  const {data, error} = await sb.from("docs").select("data").eq("wedding_id", W).eq("coll", "receipts").eq("id", id);
+  if (error || !data || !data[0]) return null;
+  return receiptCache[id] = data[0].data.img;
+}
+async function putReceipt(id, img) { const r = await sb.from("docs").upsert([{wedding_id: W, coll: "receipts", id, data: {img}}]); if (r.error) throw r.error; receiptCache[id] = img; }
+async function delReceipt(id) { delete receiptCache[id]; try { await sb.from("docs").delete().match({wedding_id: W, coll: "receipts", id}); } catch (e) {} }
+function editExpense(x, catId) {
+  const v = x ? {...x} : {date: iso(new Date()), catId: catId || lastCat || (cats().find(c => c.key === "other") || cats()[0] || {}).id, payer: me === "p1" || me === "p2" ? me : "both", method: "card"};
+  let newImg = null, removeImg = false;
+  const dis = canWrite ? "" : " disabled";
+  const bg = openSheet(x ? "Расход" : "Новый расход", `<form novalidate class="expf">
+    <div class="amt"><input name="amount" inputmode="decimal" placeholder="0" value="${x ? esc(Math.round(+x.amount * 100) / 100) : ""}" autocomplete="off"${dis}><span>₽</span></div>
+    <div class="f"><label>Категория</label><div class="chips ecats">${cats().map(c => `<button type="button" class="chip ${c.id === v.catId ? "on" : ""}" data-ec="${esc(c.id)}">${esc(c.emoji || "")} ${esc(c.name)}</button>`).join("")}</div></div>
+    ${formHTML([{k: "title", l: "На что", ph: "Например, пробный макияж"}, {k: "date", l: "Дата", t: "date", half: true}, {k: "method", l: "Способ", t: "sel", o: Object.entries(PMETH), half: true}], v)}
+    <div class="f"><label>Кто платил</label><div class="seg">${["p1", "p2", "both"].map(k => `<button type="button" class="${v.payer === k ? "on" : ""}" data-payer="${k}">${esc(PAYER[k]())}</button>`).join("")}</div></div>
+    <div class="f"><label>Чек</label><div class="rcpt"><div class="rprev"></div>${canWrite ? `<label class="btn" style="cursor:pointer">📷 ${x && x.hasReceipt ? "Заменить фото" : "Добавить фото чека"}<input type="file" accept="image/*" data-rfile hidden></label>` : ""}</div></div>
+    ${formHTML([{k: "note", l: "Заметка", t: "area", ph: "Подробности, номер заказа…"}], v)}
+    <p class="mini" style="margin:-4px 4px 10px">Оплаты подрядчикам (задатки, доплаты) удобнее вносить в карточке подрядчика.</p>
+    ${canWrite ? `<div class="btnrow">${x ? '<button type="button" class="btn danger" data-del>Удалить</button>' : ""}<button type="submit" class="btn pri" data-save>Сохранить</button></div>` : ""}
+  </form>`);
+  const f = bg.querySelector("form"), prev = bg.querySelector(".rprev");
+  const showImg = src => { prev.innerHTML = src ? `<img src="${src}" alt="Чек"><button type="button" class="x" data-rdel aria-label="Убрать чек">✕</button>` : ""; const rd = prev.querySelector("[data-rdel]"); if (rd) rd.onclick = () => { newImg = null; removeImg = true; showImg(null); }; if (!canWrite && rd) rd.remove(); };
+  if (x && x.hasReceipt) { prev.innerHTML = '<span class="mini">Загружаем чек…</span>'; getReceipt(x.id).then(src => { if (!newImg && !removeImg) showImg(src); if (!src) prev.innerHTML = '<span class="mini">Чек недоступен без интернета</span>'; }); }
+  if (!x) setTimeout(() => f.amount.focus(), 250);
+  bg.querySelectorAll("[data-ec]").forEach(b => b.onclick = () => { if (!canWrite) return; v.catId = b.dataset.ec; bg.querySelectorAll("[data-ec]").forEach(o => o.classList.toggle("on", o === b)); });
+  bg.querySelectorAll("[data-payer]").forEach(b => b.onclick = () => { if (!canWrite) return; v.payer = b.dataset.payer; bg.querySelectorAll("[data-payer]").forEach(o => o.classList.toggle("on", o === b)); });
+  const rf = bg.querySelector("[data-rfile]");
+  if (rf) rf.onchange = async () => { const file = rf.files[0]; rf.value = ""; if (!file) return; prev.innerHTML = '<span class="mini">Обрабатываем фото…</span>'; try { newImg = await compressImage(file); removeImg = false; showImg(newImg); } catch (e) { prev.innerHTML = ""; toast("Не удалось прочитать фото"); } };
+  const dl = bg.querySelector("[data-del]");
+  if (dl) dl.onclick = async () => { if (await ask(`Расход на ${rub(x.amount)} будет удалён.`)) { await del("expenses", x.id); if (x.hasReceipt) delReceipt(x.id); closeSheet(bg); } };
+  f.addEventListener("submit", async e => {
+    e.preventDefault(); if (!canWrite) return;
+    const amount = num(f.amount.value);
+    if (!amount) { f.amount.focus(); f.amount.parentElement.style.borderColor = "var(--danger)"; return; }
+    if (newImg && !navigator.onLine) { toast("Чтобы сохранить фото чека, нужен интернет"); return; }
+    const b = f.querySelector("[data-save]"); b.disabled = true;
+    const d = {amount, catId: v.catId || null, payer: v.payer, title: f.title.value.trim(), date: f.date.value, method: f.method.value, note: f.note.value.trim(), hasReceipt: newImg ? true : removeImg ? false : !!(x && x.hasReceipt)};
+    try {
+      let id = x && x.id;
+      if (x) await upd("expenses", x.id, d); else id = await add("expenses", d);
+      lastCat = d.catId;
+      if (newImg) { try { await putReceipt(id, newImg); } catch (err) { await upd("expenses", id, {hasReceipt: false}); toast("Расход сохранён, но фото чека не загрузилось"); } }
+      else if (removeImg && x) delReceipt(x.id);
+      closeSheet(bg); if (!x) toast(`Расход ${rub(amount)} добавлен`);
+    } catch (err) { console.warn(err); b.disabled = false; }
+  });
+}
+function showCategory(c) {
+  if (!c) return;
+  const x = catStats(c);
+  const vs = S.vendors.filter(v => v.catId === c.id && v.status !== "rejected"), ps = S.purchases.filter(p => p.catId === c.id), es = S.expenses.filter(e => e.catId === c.id).sort((a, b) => (b.date || "").localeCompare(a.date || ""));
+  const bg = openSheet((c.emoji ? c.emoji + " " : "") + c.name, `
+    <div class="kv"><div><span>План</span><b>${rub(x.planned)}</b></div><div><span>Факт</span><b class="${x.planned && x.contract > x.planned ? "neg" : ""}">${rub(x.contract)}</b></div><div><span>Оплачено</span><b>${rub(x.paid)}</b></div></div>
+    ${vs.length ? `<h2>Подрядчики</h2><div class="card list">${vs.map(v => `<div class="row"><div class="grow"><div class="t">${esc(v.name)}</div><div class="s">${pill(VST, v.status)}</div></div><div class="r">${+v.price ? rub(v.price) : "—"}${isSel(v) ? `<small>оплачено ${rub(vPaid(v))}</small>` : ""}</div></div>`).join("")}</div>` : ""}
+    ${ps.length ? `<h2>Покупки</h2><div class="card list">${ps.map(p => `<div class="row"><div class="grow"><div class="t">${esc(p.title)}</div><div class="s">${pill(PUR, p.status)}</div></div><div class="r">${+p.price ? rub(p.price) : "—"}</div></div>`).join("")}</div>` : ""}
+    <h2>Расходы</h2><div class="card list">${es.length ? es.map(e => `<div class="row"><div class="grow"><div class="t">${esc(e.title || "Расход")}${e.hasReceipt ? " 🧾" : ""}</div><div class="s">${esc([e.date ? fmtShort(e.date) : "", PAYER[e.payer] ? PAYER[e.payer]() : ""].filter(Boolean).join(" · "))}</div></div><div class="r">${rub(e.amount)}</div></div>`).join("") : '<div class="empty">Расходов пока нет</div>'}</div>
+    <div class="wr"><button class="btn pri w" data-addexp style="margin-top:14px">＋ Расход в эту категорию</button>
+    <div class="btnrow"><button class="btn" data-edit>✎ Изменить</button><button class="btn danger" data-delc>Удалить категорию</button></div></div>`);
+  bg.querySelector("[data-addexp]").onclick = () => { closeSheet(bg); editExpense(null, c.id); };
+  bg.querySelector("[data-edit]").onclick = () => { closeSheet(bg); editCategory(c); };
+  bg.querySelector("[data-delc]").onclick = () => deleteCategory(c);
+}
+
 /* ---------- EXPORT ---------- */
 async function exportXlsx() {
   if (!window.XLSX) return toast("Модуль Excel ещё загружается — попробуйте через пару секунд");
@@ -1093,6 +1253,7 @@ async function exportXlsx() {
   sheet("Бюджет", [["Категория", "План, ₽", "По договорам, ₽", "Оплачено, ₽", "Осталось оплатить, ₽"], ...cats().map(c => { const x = catStats(c); return [c.name, x.planned, x.contract, x.paid, x.contract - x.paid]; }), [], ["Итого", T.planned, T.contract, T.paid, T.toPay], ["Общий бюджет", T.budget], ["Свободно", T.free]], [26, 12, 16, 14, 18]);
   sheet("Подрядчики", [["Категория", "Подрядчик", "Статус", "Стоимость, ₽", "Оплачено, ₽", "Остаток, ₽", "Контакт", "Телефон", "Ссылка", "Договор", "Заметки"], ...S.vendors.map(v => [catById(v.catId)?.name || "", v.name, VST[v.status]?.[0] || "", +v.price || 0, vPaid(v), (+v.price || 0) - vPaid(v), v.contact || "", v.phone || "", v.link || "", v.contract || "", v.notes || ""])], [20, 24, 12, 13, 13, 13, 16, 16, 24, 24, 30]);
   sheet("Платежи", [["Дата", "Подрядчик", "Тип", "Способ", "Сумма, ₽", "Статус", "Комментарий"], ...[...S.payments].sort((a, b) => (a.date || "") < (b.date || "") ? -1 : 1).map(p => [p.date || "", vendorById(p.vendorId)?.name || "", PTYPE[p.type] || "", PMETH[p.method] || "", +p.amount || 0, p.status === "paid" ? "Оплачено" : "Запланировано", p.note || ""])], [12, 24, 14, 14, 12, 14, 30]);
+  sheet("Расходы", [["Дата", "На что", "Категория", "Сумма, ₽", "Кто платил", "Способ", "Чек", "Заметка"], ...[...S.expenses].sort((a, b) => (a.date || "").localeCompare(b.date || "")).map(x => [x.date || "", x.title || "", catById(x.catId)?.name || "", +x.amount || 0, PAYER[x.payer] ? PAYER[x.payer]() : "", PMETH[x.method] || "", x.hasReceipt ? "есть" : "", x.note || ""])], [12, 28, 20, 12, 12, 14, 6, 30]);
   sheet("Покупки", [["Покупка", "Категория", "Статус", "Цена, ₽", "Кто", "Ссылка"], ...S.purchases.map(p => [p.title, catById(p.catId)?.name || "", PUR[p.status]?.[0] || "", +p.price || 0, who(p.who), p.link || ""])], [28, 20, 12, 12, 12, 30]);
   sheet("Гости", [["Имя", "Сторона", "Группа", "Статус", "Стол", "Телефон", "Заметка"], ...[...S.guests].sort((a, b) => String(a.name).localeCompare(String(b.name), "ru")).map(g => [g.name, sideLabel(g.side), g.group || "", RSVP[g.rsvp]?.[0] || "", tableById(g.tableId)?.name || "", g.phone || "", g.note || ""])], [26, 22, 12, 12, 16, 16, 30]);
   sheet("Задачи", [["Срок", "Задача", "Кто", "Статус"], ...PER.flatMap(p => S.tasks.filter(t => t.period === p.key).sort(byOrder).map(t => [p.label, t.title, who(t.who), isDone(t) ? "Готово" : "Открыта"]))], [18, 46, 12, 10]);
@@ -1103,7 +1264,7 @@ async function exportXlsx() {
 
 /* ---------- events ---------- */
 document.addEventListener("click", e => {
-  const t = e.target.closest("[data-copy],[data-go],[data-act],[data-vendor],[data-addvendor],[data-addcand],[data-payment],[data-vf],[data-tf],[data-pf],[data-gf],[data-lf],[data-tick],[data-task],[data-cat],[data-pur],[data-guest],[data-seat],[data-table]");
+  const t = e.target.closest("[data-copy],[data-go],[data-act],[data-vendor],[data-addvendor],[data-addcand],[data-payment],[data-vf],[data-tf],[data-pf],[data-gf],[data-lf],[data-tick],[data-task],[data-cat],[data-exp],[data-pur],[data-guest],[data-seat],[data-table]");
   if (!t || t.closest(".sheet")) return;
   const ds = t.dataset;
   if (ds.copy) { navigator.clipboard.writeText(ds.copy).then(() => toast("Скопировано — отправьте в мессенджер"), () => toast("Не удалось скопировать")); return; }
@@ -1124,7 +1285,8 @@ document.addEventListener("click", e => {
     upd("tasks", tk.id, {done: !tk.done}).catch(() => {}); return;
   }
   if (ds.task) return editTask(S.tasks.find(x => x.id === ds.task));
-  if (ds.cat) return editCategory(catById(ds.cat));
+  if (ds.cat) return showCategory(catById(ds.cat));
+  if (ds.exp) return editExpense(S.expenses.find(x => x.id === ds.exp));
   if (ds.pur) return editPurchase(S.purchases.find(x => x.id === ds.pur));
   if (ds.guest) return editGuest(S.guests.find(x => x.id === ds.guest));
   if (ds.seat) return seatGuest(ds.seat);
@@ -1138,6 +1300,7 @@ document.addEventListener("click", e => {
     if (a === "bulkGuests") return bulkGuests();
     if (a === "table") return editTable(null);
     if (a === "category") return editCategory(null);
+    if (a === "expense") return editExpense(null);
     if (a === "export") return exportXlsx();
     if (a === "backup") return backupJSON();
     if (a === "retry") return start();
